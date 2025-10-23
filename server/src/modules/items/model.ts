@@ -1,6 +1,6 @@
 import { eq, asc, and, or, gt, count } from "drizzle-orm";
 import schema from '../../../shared/schema.js';
-
+import { z } from "zod";
 const { 
   items,
   vendors,
@@ -11,7 +11,19 @@ type Item = typeof schema.items.$inferSelect;
 type InsertItem = typeof schema.insertItemSchema._input;
 type ItemWithVendor = typeof schema.ItemWithVendor;
 type PaginationOptions = typeof schema.PaginationOptions;
-type PaginatedResult<T> = typeof schema.PaginatedResult<T>;
+export function PaginatedResult<T extends z.ZodTypeAny>(dataSchema: T) {
+  return z.object({
+    data: z.array(dataSchema),
+    pagination: z.object({
+      page: z.number(),
+      limit: z.number(),
+      total: z.number(),
+      totalPages: z.number(),
+      hasNext: z.boolean(),
+      hasPrevious: z.boolean(),
+    }),
+  });
+}
 import { db } from "../../../db";
 import {
   normalizePaginationOptions,

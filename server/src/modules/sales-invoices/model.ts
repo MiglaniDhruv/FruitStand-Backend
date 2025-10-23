@@ -1,7 +1,7 @@
 import { eq, desc, asc, and, or, gte, lte, ilike, inArray, count, sql, sum } from 'drizzle-orm';
 import { db } from '../../../db';
 import schema from '../../../shared/schema.js';
-
+import { z } from 'zod';
 const { 
   salesInvoices, 
   salesInvoiceItems, 
@@ -21,7 +21,19 @@ type InsertSalesInvoiceItem = typeof schema.insertSalesInvoiceItemSchema._input;
 type InsertCrateTransaction = typeof schema.insertCrateTransactionSchema._input;
 type SalesInvoiceWithDetails = typeof schema.SalesInvoiceWithDetails;
 type PaginationOptions = typeof schema.PaginationOptions;
-type PaginatedResult<T> = typeof schema.PaginatedResult<T>;
+export function PaginatedResult<T extends z.ZodTypeAny>(dataSchema: T) {
+  return z.object({
+    data: z.array(dataSchema),
+    pagination: z.object({
+      page: z.number(),
+      limit: z.number(),
+      total: z.number(),
+      totalPages: z.number(),
+      hasNext: z.boolean(),
+      hasPrevious: z.boolean(),
+    }),
+  });
+}
 type Retailer = typeof schema.retailers.$inferSelect;
 type InvoiceShareLink = typeof schema.invoiceShareLinks.$inferSelect;
 type CrateTransaction = typeof schema.crateTransactions.$inferSelect;

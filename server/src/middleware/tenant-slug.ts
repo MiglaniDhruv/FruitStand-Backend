@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from "express";
+import { Response, NextFunction } from "express";
 import { TenantModel } from "../modules/tenants/model";
 import { AuthenticatedRequest, NotFoundError, ForbiddenError, InternalServerError, AppError, BadRequestError } from "../types";
 import { SYSTEM_ROUTES } from "../constants/routes";
@@ -22,7 +22,7 @@ export const extractTenantSlug = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<void> => {
   try {
     const path = req.path;
 
@@ -36,8 +36,8 @@ export const extractTenantSlug = async (
     // This avoids DB overhead on static assets and other non-tenant routes
     const shouldProcessTenant =
       path.includes("/api/") ||
-      path.match(/^\/[^\/]+\/(login|dashboard|auth)/) ||
-      path.match(/^\/[^\/]+$/); // Root tenant path
+      path.match(/^\/[^\/]+\/(login|dashboard|auth)/) !== null ||
+      path.match(/^\/[^\/]+$/) !== null; // Root tenant path
 
     if (!shouldProcessTenant) {
       return next();
@@ -60,7 +60,7 @@ export const extractTenantSlug = async (
     }
 
     // Set flag indicating a tenant slug was provided in the URL
-    (req as any).slugProvided = true;
+    req.slugProvided = true; // Now type-safe!
 
     // Check cache first
     const cacheEntry = tenantCache.get(slug);
@@ -117,7 +117,7 @@ export const requireTenantContext = (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-) => {
+): void => {
   if (!req.tenant) {
     throw new BadRequestError('This endpoint requires a valid tenant slug in the URL');
   }

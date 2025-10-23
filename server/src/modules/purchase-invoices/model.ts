@@ -7,6 +7,7 @@ import { InvoiceShareLinkModel } from '../invoice-share-links/model';
 import { NotFoundError, ValidationError, BadRequestError, ConflictError, AppError } from '../../types';
 import { handleDatabaseError } from '../../utils/database-errors';
 import schema from '../../../shared/schema.js';
+import { z } from 'zod';
 
 const { 
   purchaseInvoices, 
@@ -27,7 +28,19 @@ type InsertInvoiceItem = typeof schema.insertInvoiceItemSchema._input;
 type InsertCrateTransaction = typeof schema.insertCrateTransactionSchema._input;
 type InvoiceWithItems = typeof schema.InvoiceWithItems;
 type PaginationOptions = typeof schema.PaginationOptions;
-type PaginatedResult<T> = typeof schema.PaginatedResult<T>;
+export function PaginatedResult<T extends z.ZodTypeAny>(dataSchema: T) {
+  return z.object({
+    data: z.array(dataSchema),
+    pagination: z.object({
+      page: z.number(),
+      limit: z.number(),
+      total: z.number(),
+      totalPages: z.number(),
+      hasNext: z.boolean(),
+      hasPrevious: z.boolean(),
+    }),
+  });
+}
 type InvoiceShareLink = typeof schema.invoiceShareLinks.$inferSelect;
 type CrateTransaction = typeof schema.crateTransactions.$inferSelect;
 

@@ -6,9 +6,17 @@ const { payments, purchaseInvoices, vendors, bankAccounts, cashbook, bankbook } 
 
 type Payment = typeof schema.payments.$inferSelect;
 type InsertPayment = typeof schema.insertPaymentSchema._input;
-type PaymentWithDetails = typeof schema.PaymentWithDetails;
 type PurchaseInvoice = typeof schema.purchaseInvoices.$inferSelect;
-type VendorPaymentDistributionResult = typeof schema.VendorPaymentDistributionResult;
+type Vendor = typeof schema.vendors.$inferSelect;
+type BankAccount = typeof schema.bankAccounts.$inferSelect;
+
+// ✅ Manually define composite type
+type PaymentWithDetails = Payment & {
+  invoice: PurchaseInvoice;
+  vendor: Vendor;
+  bankAccount?: BankAccount;
+};
+
 import { withTenant, ensureTenantInsert } from '../../utils/tenant-scope';
 import { BankAccountModel } from '../bank-accounts/model';
 import { TenantModel } from '../tenants/model';
@@ -36,15 +44,27 @@ export class PaymentModel {
 
     // Batch fetch related data with tenant filtering
     const [invoicesData, vendorsData, bankAccountsData] = await Promise.all([
-      invoiceIds.length > 0 ? db.select().from(purchaseInvoices).where(withTenant(purchaseInvoices, tenantId, inArray(purchaseInvoices.id, invoiceIds))) : [],
-      vendorIds.length > 0 ? db.select().from(vendors).where(withTenant(vendors, tenantId, inArray(vendors.id, vendorIds))) : [],
-      bankAccountIds.length > 0 ? db.select().from(bankAccounts).where(withTenant(bankAccounts, tenantId, inArray(bankAccounts.id, bankAccountIds))) : []
+      invoiceIds.length > 0
+        ? db.select().from(purchaseInvoices).where(withTenant(purchaseInvoices, tenantId, inArray(purchaseInvoices.id, invoiceIds)))
+        : [],
+      vendorIds.length > 0
+        ? db.select().from(vendors).where(withTenant(vendors, tenantId, inArray(vendors.id, vendorIds)))
+        : [],
+      bankAccountIds.length > 0
+        ? db.select().from(bankAccounts).where(withTenant(bankAccounts, tenantId, inArray(bankAccounts.id, bankAccountIds)))
+        : []
     ]);
 
-    // Create lookup maps
-    const invoiceMap = new Map(invoicesData.map(i => [i.id, i]));
-    const vendorMap = new Map(vendorsData.map(v => [v.id, v]));
-    const bankAccountMap = new Map(bankAccountsData.map(b => [b.id, b]));
+    // ✅ Fix: assert tuple types for Map constructor
+    const invoiceMap = new Map<string, PurchaseInvoice>(
+      invoicesData.map(i => [i.id, i] as [string, PurchaseInvoice])
+    );
+    const vendorMap = new Map<string, Vendor>(
+      vendorsData.map(v => [v.id, v] as [string, Vendor])
+    );
+    const bankAccountMap = new Map<string, BankAccount>(
+      bankAccountsData.map(b => [b.id, b] as [string, BankAccount])
+    );
 
     // Assemble final data - filter out payments without required related entities
     const result = paymentsList
@@ -52,11 +72,10 @@ export class PaymentModel {
         const invoice = invoiceMap.get(payment.invoiceId);
         const vendor = vendorMap.get(payment.vendorId);
         
-        // Both invoice and vendor are required per PaymentWithDetails type
         if (!invoice || !vendor) {
           return null;
         }
-        
+
         return {
           ...payment,
           invoice,
@@ -64,10 +83,12 @@ export class PaymentModel {
           bankAccount: payment.bankAccountId ? bankAccountMap.get(payment.bankAccountId) : undefined
         };
       })
-      .filter(payment => payment !== null) as PaymentWithDetails[];
+      .filter((payment): payment is PaymentWithDetails => payment !== null);
 
     return result;
   }
+
+
 
   async getPaymentsByInvoice(tenantId: string, invoiceId: string): Promise<PaymentWithDetails[]> {
     const paymentsList = await db.select().from(payments)

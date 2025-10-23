@@ -92,7 +92,7 @@ export function addReportMetadata(worksheet: Worksheet, fromDate?: string, toDat
 /**
  * Apply currency formatting to a cell
  */
-export function formatCurrencyCell(cell: any, value: number | string): void {
+export function formatCurrencyCell(cell: Cell, value: number | string): void {
   const num = typeof value === 'string' ? Number(value) : value;
   cell.value = isNaN(num) ? 0 : num;
   cell.numFmt = EXCEL_STYLES.currency.numFmt;
@@ -101,21 +101,16 @@ export function formatCurrencyCell(cell: any, value: number | string): void {
 /**
  * Apply date formatting to a cell
  */
-export function formatDateCell(cell: any, value: Date | string): void {
-  cell.value = value;
+export function formatDateCell(cell: Cell, value: Date | string): void {
+  cell.value = value ? new Date(value) : null;
   cell.numFmt = EXCEL_STYLES.date.numFmt;
 }
 
-/**
- * Auto-adjust column widths based on content
- */
 export function autoSizeColumns(worksheet: Worksheet): void {
-  worksheet.columns.forEach((column: any) => {
-    if (column.values) {
-      const lengths = column.values.map((v: any) => v ? v.toString().length : 0);
-      const maxLength = Math.max(...lengths.filter((v: any) => typeof v === 'number'));
-      column.width = Math.min(Math.max(maxLength + 2, COLUMN_WIDTHS.narrow), COLUMN_WIDTHS.extraWide);
-    }
+  worksheet.columns.forEach((column) => {
+    const values = column.values as (string | number | Date | null)[];
+    const maxLength = Math.max(...values.map(v => (v ? v.toString().length : 0)));
+    column.width = Math.min(Math.max(maxLength + 2, COLUMN_WIDTHS.narrow), COLUMN_WIDTHS.extraWide);
   });
 }
 

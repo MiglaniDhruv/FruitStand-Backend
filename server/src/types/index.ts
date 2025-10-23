@@ -1,28 +1,42 @@
-import { Request } from "express";
-import schema from '../../shared/schema.js';
+// src/types/index.ts
 
-type Tenant = typeof schema.tenants.$inferSelect;
+import type { Request } from "express";
+import schema from "../../shared/schema.js";
+import { ERROR_CODES, type ErrorCode } from "../constants/error-codes";
+import { ZodError } from "zod";
+
+// Tenant type from your schema
+export type Tenant = typeof schema.tenants.$inferSelect;
 
 // Authentication related types
 export interface AuthUser {
   id: string;
   username: string;
-  role: string;
+  role: UserRole;
   name: string;
   permissions: string[];
 }
 
-import { Request } from "express";
-import { Tenant } from "../modules/tenants/model";
-import { UserRole } from "../modules/users/model";
+// Role enum
+export enum UserRole {
+  ADMIN = "Admin",
+  OPERATOR = "Operator",
+  ACCOUNTANT = "Accountant",
+}
 
-export interface AuthenticatedRequest extends Request {
-  user?: { id: string; username: string; role: UserRole; tenantId: string };
+// Authenticated request with generics for Express
+export interface AuthenticatedRequest<
+  P = any,
+  ResBody = any,
+  ReqBody = any,
+  ReqQuery = any
+> extends Request<P, ResBody, ReqBody, ReqQuery> {
+  user?: AuthUser;
   tenantId?: string;
   tenant?: Tenant;
   requestId?: string;
+  slugProvided?: boolean;
 }
-
 
 // Common API response structures
 export interface ApiResponse<T = any> {
@@ -38,13 +52,7 @@ export interface ApiErrorResponse {
   errors?: any;
 }
 
-// Role-based permissions
-export enum UserRole {
-  ADMIN = "Admin",
-  OPERATOR = "Operator", 
-  ACCOUNTANT = "Accountant"
-}
-
+// Permissions enum
 export enum Permission {
   // User management
   MANAGE_USERS = "manage_users",
@@ -91,7 +99,7 @@ export enum Permission {
 
   // Dashboard & Analytics
   VIEW_DASHBOARD = "view_dashboard",
-  VIEW_ANALYTICS = "view_analytics"
+  VIEW_ANALYTICS = "view_analytics",
 }
 
 // Request/Response interfaces for common operations
@@ -134,10 +142,7 @@ export interface RetailerFilter {
   retailerId?: string;
 }
 
-// Enhanced error infrastructure with status codes and error codes
-import { ERROR_CODES, type ErrorCode } from '../constants/error-codes';
-import { ZodError } from 'zod';
-
+// Enhanced error infrastructure
 export class AppError extends Error {
   public statusCode: number;
   public code: ErrorCode;
@@ -152,7 +157,7 @@ export class AppError extends Error {
     details?: any
   ) {
     super(message);
-    this.name = 'AppError';
+    this.name = "AppError";
     this.statusCode = statusCode;
     this.code = code;
     this.isOperational = isOperational;
@@ -163,14 +168,17 @@ export class AppError extends Error {
 export class ValidationError extends AppError {
   public fields?: Record<string, string>;
 
-  constructor(message: string = "Validation failed", fieldsOrZodError?: Record<string, string> | ZodError) {
+  constructor(
+    message: string = "Validation failed",
+    fieldsOrZodError?: Record<string, string> | ZodError
+  ) {
     super(message, 400, ERROR_CODES.VALIDATION_FAILED, true);
-    this.name = 'ValidationError';
-    
+    this.name = "ValidationError";
+
     if (fieldsOrZodError instanceof ZodError) {
       this.fields = {};
-      fieldsOrZodError.errors.forEach(error => {
-        const path = error.path.join('.');
+      fieldsOrZodError.errors.forEach((error) => {
+        const path = error.path.join(".");
         this.fields![path] = error.message;
       });
       this.details = { fields: this.fields };
@@ -184,35 +192,38 @@ export class ValidationError extends AppError {
 export class NotFoundError extends AppError {
   constructor(resource: string = "Resource") {
     super(`${resource} not found`, 404, ERROR_CODES.RESOURCE_NOT_FOUND, true);
-    this.name = 'NotFoundError';
+    this.name = "NotFoundError";
   }
 }
 
 export class UnauthorizedError extends AppError {
-  constructor(message: string = "Unauthorized access", code: ErrorCode = ERROR_CODES.AUTH_UNAUTHORIZED) {
+  constructor(
+    message: string = "Unauthorized access",
+    code: ErrorCode = ERROR_CODES.AUTH_UNAUTHORIZED
+  ) {
     super(message, 401, code, true);
-    this.name = 'UnauthorizedError';
+    this.name = "UnauthorizedError";
   }
 }
 
 export class ForbiddenError extends AppError {
   constructor(message: string = "Insufficient permissions") {
     super(message, 403, ERROR_CODES.AUTH_INSUFFICIENT_PERMISSIONS, true);
-    this.name = 'ForbiddenError';
+    this.name = "ForbiddenError";
   }
 }
 
 export class BadRequestError extends AppError {
   constructor(message: string = "Bad request") {
     super(message, 400, ERROR_CODES.VALIDATION_FAILED, true);
-    this.name = 'BadRequestError';
+    this.name = "BadRequestError";
   }
 }
 
 export class ConflictError extends AppError {
   constructor(message: string = "Resource conflict") {
     super(message, 409, ERROR_CODES.RESOURCE_CONFLICT, true);
-    this.name = 'ConflictError';
+    this.name = "ConflictError";
   }
 }
 
@@ -221,7 +232,7 @@ export class DatabaseError extends AppError {
 
   constructor(message: string = "Database error", originalError?: Error) {
     super(message, 500, ERROR_CODES.DB_QUERY_ERROR, false);
-    this.name = 'DatabaseError';
+    this.name = "DatabaseError";
     this.originalError = originalError;
     this.details = { originalError: originalError?.message };
   }
@@ -230,13 +241,13 @@ export class DatabaseError extends AppError {
 export class InternalServerError extends AppError {
   constructor(message: string = "Internal server error") {
     super(message, 500, ERROR_CODES.SYSTEM_INTERNAL_ERROR, false);
-    this.name = 'InternalServerError';
+    this.name = "InternalServerError";
   }
 }
 
 export class TimeoutError extends AppError {
   constructor(message: string = "Request timeout") {
     super(message, 408, ERROR_CODES.REQUEST_TIMEOUT, true);
-    this.name = 'TimeoutError';
+    this.name = "TimeoutError";
   }
 }

@@ -1,9 +1,8 @@
 import { Request, Response, NextFunction, Router } from "express";
 import schema from '../../shared/schema.js';
+import type { PaginationOptions, PaginationMetadata, PaginatedResult } from '../../shared/schema';
 
-type PaginationOptions = typeof schema.PaginationOptions;
-type PaginationMetadata = typeof schema.PaginationMetadata;
-type PaginatedResult<T> = typeof schema.PaginatedResult<T>;
+type PaginatedResultType<T> = PaginatedResult<T>;
 import { ValidationError, NotFoundError, BadRequestError } from "../types";
 import { handleDatabaseError } from "./database-errors";
 import { asyncHandler } from "./async-handler";
@@ -21,7 +20,7 @@ export class BaseController {
 
   // Paginated response formatting
   protected sendPaginatedResponse(res: Response, data: any[], pagination: PaginationMetadata) {
-    const response: PaginatedResult<any> = {
+    const response: PaginatedResultType<any> = {
       data,
       pagination
     };

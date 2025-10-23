@@ -1,6 +1,7 @@
 import { eq, desc, asc, inArray, and, count } from 'drizzle-orm';
 import { db } from '../../../db';
 import schema from '../../../shared/schema.js';
+import { z } from 'zod';
 
 const { expenseCategories, expenses, bankAccounts, cashbook, bankbook } = schema;
 
@@ -10,7 +11,19 @@ type Expense = typeof schema.expenses.$inferSelect;
 type InsertExpense = typeof schema.insertExpenseSchema._input;
 type ExpenseWithCategory = typeof schema.ExpenseWithCategory;
 type PaginationOptions = typeof schema.PaginationOptions;
-type PaginatedResult<T> = typeof schema.PaginatedResult<T>;
+export function PaginatedResult<T extends z.ZodTypeAny>(dataSchema: T) {
+  return z.object({
+    data: z.array(dataSchema),
+    pagination: z.object({
+      page: z.number(),
+      limit: z.number(),
+      total: z.number(),
+      totalPages: z.number(),
+      hasNext: z.boolean(),
+      hasPrevious: z.boolean(),
+    }),
+  });
+}
 import { withTenant, ensureTenantInsert } from '../../utils/tenant-scope';
 import { BankAccountModel } from '../bank-accounts/model';
 import { TenantModel } from '../tenants/model';

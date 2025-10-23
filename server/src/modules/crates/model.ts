@@ -1,6 +1,7 @@
 import { eq, desc, asc, and, or, gte, lte, ilike, inArray, count, sql } from 'drizzle-orm';
 import { db } from '../../../db';
 import schema from '../../../shared/schema.js';
+import { z } from 'zod';
 
 const { crateTransactions, retailers, vendors, CRATE_TRANSACTION_TYPES } = schema;
 
@@ -8,7 +9,19 @@ type CrateTransaction = typeof schema.crateTransactions.$inferSelect;
 type InsertCrateTransaction = typeof schema.insertCrateTransactionSchema._input;
 type CrateTransactionWithParty = typeof schema.CrateTransactionWithParty;
 type PaginationOptions = typeof schema.PaginationOptions;
-type PaginatedResult<T> = typeof schema.PaginatedResult<T>;
+export function PaginatedResult<T extends z.ZodTypeAny>(dataSchema: T) {
+  return z.object({
+    data: z.array(dataSchema),
+    pagination: z.object({
+      page: z.number(),
+      limit: z.number(),
+      total: z.number(),
+      totalPages: z.number(),
+      hasNext: z.boolean(),
+      hasPrevious: z.boolean(),
+    }),
+  });
+}
 import { normalizePaginationOptions, buildPaginationMetadata } from '../../utils/pagination';
 import { withTenant, ensureTenantInsert } from '../../utils/tenant-scope';
 

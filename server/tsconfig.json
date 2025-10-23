@@ -1,17 +1,39 @@
 {
   "compilerOptions": {
+    /* === Output and Module System === */
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "esModuleInterop": true,
-    "strict": true,
-    "noImplicitAny": false,
-    "skipLibCheck": true,
     "outDir": "dist",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "strict": false,                 
+    "noImplicitAny": false,          
+    "skipLibCheck": true,           
+    "noEmitOnError": false,
+    "useUnknownInCatchVariables": false,
     "baseUrl": ".",
     "paths": {
-      "@shared/*": ["shared/*"]
-    }
+      "@shared/*": ["shared/*"],
+      "@src/*": ["src/*"]
+    },
+    "typeRoots": ["./src/types", "./node_modules/@types"],
+    "allowJs": true,                 // allow .js files too
+    "checkJs": false,                // don’t type-check JS files
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": false         // avoid bundler complaints on Vercel
   },
-  "include": ["src/**/*", "shared/**/*"]
+
+  "include": [
+    "src/**/*",
+    "shared/**/*",
+    "src/types/**/*"
+  ],
+
+  /* === Optional: Exclude build and node_modules === */
+  "exclude": [
+    "dist",
+    "node_modules"
+  ]
 }

@@ -1,7 +1,7 @@
 import { eq, desc, asc, and, or, ilike, count, inArray, sum } from 'drizzle-orm';
 import { db } from '../../../db';
 import schema from '../../../shared/schema.js';
-
+import { z } from 'zod';
 const { 
   retailers, 
   salesInvoices,
@@ -15,7 +15,19 @@ const {
 type Retailer = typeof schema.retailers.$inferSelect;
 type InsertRetailer = typeof schema.insertRetailerSchema._input;
 type PaginationOptions = typeof schema.PaginationOptions;
-type PaginatedResult<T> = typeof schema.PaginatedResult<T>;
+export function PaginatedResult<T extends z.ZodTypeAny>(dataSchema: T) {
+  return z.object({
+    data: z.array(dataSchema),
+    pagination: z.object({
+      page: z.number(),
+      limit: z.number(),
+      total: z.number(),
+      totalPages: z.number(),
+      hasNext: z.boolean(),
+      hasPrevious: z.boolean(),
+    }),
+  });
+}
 import { normalizePaginationOptions, buildPaginationMetadata, withTenantPagination } from '../../utils/pagination';
 import { withTenant, ensureTenantInsert } from '../../utils/tenant-scope';
 import { ValidationError, AppError, NotFoundError } from '../../types';

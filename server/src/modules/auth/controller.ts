@@ -16,6 +16,15 @@ export class AuthController extends BaseController {
     this.authModel = new AuthModel();
   }
 
+  async switchTenant(req: AuthenticatedRequest<{ tenantId: string }>, res: Response) {
+  const { tenantId } = req.body;
+  if (!tenantId) {
+    return res.status(400).json({ error: "tenantId is required" });
+  }
+  // ...
+}
+
+
   async login(req: Request, res: Response) {
     // Validate request body
     const { username, password } = this.validateZodSchema(loginSchema, req.body);
@@ -229,7 +238,7 @@ export class AuthController extends BaseController {
   }
 
   async switchTenant(req: AuthenticatedRequest, res: Response) {
-    const { tenantId } = req.body;
+   const { tenantId } = req.body ;
 
     if (!tenantId) {
       throw new BadRequestError('Tenant ID is required');

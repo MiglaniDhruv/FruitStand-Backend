@@ -1,6 +1,12 @@
-import { eq, desc, and, or, ilike } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { db } from "../../../db";
 import schema from '../../../shared/schema.js';
+import type { 
+  WhatsAppMessage as WhatsAppMessageType, 
+  InsertWhatsAppMessage as InsertWhatsAppMessageType, 
+  PaginationOptions as PaginationOptionsType, 
+  PaginatedResult as PaginatedResultType 
+} from '../../../shared/schema';
 import { 
   ensureTenantInsert, 
   withTenant, 
@@ -15,20 +21,23 @@ import {
 
 const { whatsappMessages } = schema;
 
-type WhatsAppMessage = typeof schema.whatsappMessages.$inferSelect;
-type InsertWhatsAppMessage = typeof schema.insertWhatsAppMessageSchema._input;
-type PaginationOptions = typeof schema.PaginationOptions;
-type PaginatedResult<T> = typeof schema.PaginatedResult<T>;
+type WhatsAppMessage = WhatsAppMessageType;
+type InsertWhatsAppMessage = InsertWhatsAppMessageType;
+type PaginationOptions = PaginationOptionsType;
+type PaginatedResult<T> = PaginatedResultType<T>;
 
 export class WhatsAppMessageModel {
   /**
    * Create a new WhatsApp message record
    */
-  static async createMessage(tenantId: string, messageData: InsertWhatsAppMessage): Promise<WhatsAppMessage> {
+  static async createMessage(
+    tenantId: string, 
+    messageData: InsertWhatsAppMessage
+  ): Promise<WhatsAppMessage> {
     const [message] = await db
       .insert(whatsappMessages)
       .values(ensureTenantInsert(messageData, tenantId))
-      .returning();
+      .returning<WhatsAppMessage>(); // Fixed TS typing
     
     return message;
   }
@@ -45,7 +54,7 @@ export class WhatsAppMessageModel {
       .update(whatsappMessages)
       .set(updates)
       .where(withTenant(whatsappMessages, tenantId, eq(whatsappMessages.id, messageId)))
-      .returning();
+      .returning<WhatsAppMessage>(); // Fixed TS typing
     
     return updatedMessage;
   }
@@ -53,9 +62,12 @@ export class WhatsAppMessageModel {
   /**
    * Get a single WhatsApp message by ID
    */
-  static async getMessage(tenantId: string, messageId: string): Promise<WhatsAppMessage | undefined> {
+  static async getMessage(
+    tenantId: string, 
+    messageId: string
+  ): Promise<WhatsAppMessage | undefined> {
     const [message] = await db
-      .select()
+      .select<WhatsAppMessage>()
       .from(whatsappMessages)
       .where(withTenant(whatsappMessages, tenantId, eq(whatsappMessages.id, messageId)))
       .limit(1);
@@ -68,7 +80,7 @@ export class WhatsAppMessageModel {
    */
   static async getMessages(tenantId: string): Promise<WhatsAppMessage[]> {
     return await db
-      .select()
+      .select<WhatsAppMessage>()
       .from(whatsappMessages)
       .where(withTenant(whatsappMessages, tenantId))
       .orderBy(desc(whatsappMessages.createdAt));
@@ -86,9 +98,12 @@ export class WhatsAppMessageModel {
       search?: string;
     }
   ): Promise<PaginatedResult<WhatsAppMessage>> {
-    const { page, limit, offset, tenantCondition } = withTenantPagination(whatsappMessages, tenantId, options);
+    const { page, limit, offset, tenantCondition } = withTenantPagination(
+      whatsappMessages, 
+      tenantId, 
+      options
+    );
     
-    // Define table columns for sorting and searching
     const tableColumns = {
       createdAt: whatsappMessages.createdAt,
       status: whatsappMessages.status,
@@ -98,39 +113,28 @@ export class WhatsAppMessageModel {
     
     const searchableColumns = [whatsappMessages.recipientPhone, whatsappMessages.referenceNumber];
     
-    // Start with tenant condition
     let combinedCondition = tenantCondition;
     
-    // Add status filter
     if (options.status) {
       combinedCondition = and(combinedCondition, eq(whatsappMessages.status, options.status))!;
     }
-
-    // Add message type filter
     if (options.messageType) {
       combinedCondition = and(combinedCondition, eq(whatsappMessages.messageType, options.messageType))!;
     }
-
-    // Add recipient type filter
     if (options.recipientType) {
       combinedCondition = and(combinedCondition, eq(whatsappMessages.recipientType, options.recipientType))!;
     }
     
-    // Build base query with filters
-    let query = db.select().from(whatsappMessages).where(combinedCondition);
+    let query = db.select<WhatsAppMessage>().from(whatsappMessages).where(combinedCondition);
     
-    // Apply search filter using helper
     if (options.search) {
       query = applySearchFilter(query, options.search, searchableColumns, combinedCondition);
     }
     
-    // Apply sorting using helper
     query = applySorting(query, options.sortBy || 'createdAt', options.sortOrder || 'desc', tableColumns);
     
-    // Apply pagination and execute
     const data = await query.limit(limit).offset(offset);
     
-    // Get total count with filters
     const total = await getCountWithSearch(
       whatsappMessages, 
       options.search ? searchableColumns : undefined, 
@@ -152,7 +156,7 @@ export class WhatsAppMessageModel {
     referenceId: string
   ): Promise<WhatsAppMessage[]> {
     return await db
-      .select()
+      .select<WhatsAppMessage>()
       .from(whatsappMessages)
       .where(
         withTenant(
@@ -172,7 +176,7 @@ export class WhatsAppMessageModel {
    */
   static async getMessageByTwilioSid(twilioSid: string): Promise<WhatsAppMessage | undefined> {
     const [message] = await db
-      .select()
+      .select<WhatsAppMessage>()
       .from(whatsappMessages)
       .where(eq(whatsappMessages.twilioMessageSid, twilioSid))
       .limit(1);

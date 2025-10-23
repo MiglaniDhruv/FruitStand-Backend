@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { eq, asc, and, inArray, count, sum } from "drizzle-orm";
 import schema from '../../../shared/schema.js';
 import { db } from "../../../db";
@@ -28,8 +29,19 @@ const {
 type Vendor = typeof schema.vendors.$inferSelect;
 type InsertVendor = typeof schema.insertVendorSchema._input;
 type PaginationOptions = typeof schema.PaginationOptions;
-type PaginatedResult<T> = typeof schema.PaginatedResult<T>;
-
+export function PaginatedResult<T extends z.ZodTypeAny>(dataSchema: T) {
+  return z.object({
+    data: z.array(dataSchema),
+    pagination: z.object({
+      page: z.number(),
+      limit: z.number(),
+      total: z.number(),
+      totalPages: z.number(),
+      hasNext: z.boolean(),
+      hasPrevious: z.boolean(),
+    }),
+  });
+}
 export class VendorModel {
   async getVendors(tenantId: string): Promise<Vendor[]> {
     return await db.select().from(vendors)
@@ -57,14 +69,40 @@ export class VendorModel {
       });
     }
 
-    try {
-      const vendorWithTenant = ensureTenantInsert(insertVendor, tenantId);
-      const [vendor] = await db.insert(vendors).values(vendorWithTenant).returning();
-      return vendor;
-    } catch (error) {
-      if (error instanceof AppError) throw error;
-      handleDatabaseError(error);
-    }
+    // Define a type for insertion
+type VendorInsert = {
+  name: string;        // required
+  phone?: string;      // optional
+  address?: string;    // optional
+  tenantId: string;    // required
+};
+
+// Ensure we have required fields before inserting
+function ensureTenantInsert(
+  data: Partial<VendorInsert>, 
+  tenantId: string
+): VendorInsert {
+  if (!data.name) {
+    throw new Error("Vendor name is required"); // Ensure name is present
+  }
+
+  // Narrow the type so TypeScript knows 'name' exists
+  return { name: data.name, phone: data.phone, address: data.address, tenantId };
+}
+
+
+// Usage in your function
+try {
+  const vendorWithTenant = ensureTenantInsert(insertVendor, tenantId);
+  const [vendor] = await db.insert(vendors)
+    .values(vendorWithTenant) // Now 'name' is guaranteed
+    .returning();
+  return vendor;
+} catch (error) {
+  if (error instanceof AppError) throw error;
+  handleDatabaseError(error);
+}
+
   }
 
   async updateVendor(tenantId: string, id: string, insertVendor: Partial<InsertVendor>): Promise<Vendor | undefined> {

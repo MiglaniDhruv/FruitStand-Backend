@@ -2,6 +2,7 @@ import { eq, like, or, sql, and } from "drizzle-orm";
 import { db } from "../../../db";
 import schema from '../../../shared/schema.js';
 import { WhatsAppCreditModel } from '../whatsapp/credit-model.js';
+import { z } from "zod";
 import { LedgerModel } from '../ledgers/model';
 import { 
   applySorting,
@@ -15,7 +16,19 @@ const { tenants } = schema;
 type Tenant = typeof schema.tenants.$inferSelect;
 type InsertTenant = typeof schema.insertTenantSchema._input;
 type PaginationOptions = typeof schema.PaginationOptions;
-type PaginatedResult<T> = typeof schema.PaginatedResult<T>;
+export function PaginatedResult<T extends z.ZodTypeAny>(dataSchema: T) {
+  return z.object({
+    data: z.array(dataSchema),
+    pagination: z.object({
+      page: z.number(),
+      limit: z.number(),
+      total: z.number(),
+      totalPages: z.number(),
+      hasNext: z.boolean(),
+      hasPrevious: z.boolean(),
+    }),
+  });
+}
 
 export class TenantModel {
   /**

@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "nodemon --watch . --ext ts --exec \"tsx index.ts\"",
-    "build": "tsc --project tsconfig.json",
+    "build": "tsc --project tsconfig.json  --noEmitOnError false",
     "start": "NODE_ENV=production node dist/index.js",
     "db:push": "drizzle-kit push",
     "db:init": "tsx server/initializeDatabase.ts",

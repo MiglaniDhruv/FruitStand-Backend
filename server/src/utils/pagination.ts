@@ -1,10 +1,7 @@
 import { eq, desc, asc, ilike, or, and, count } from "drizzle-orm";
 import { db } from "../../db";
 import schema from '../../shared/schema.js';
-
-type PaginationOptions = typeof schema.PaginationOptions;
-type PaginationMetadata = typeof schema.PaginationMetadata;
-type SortOrder = typeof schema.SortOrder;
+import type { PaginationOptions, PaginationMetadata, SortOrder } from '../../shared/schema';
 import { withTenant } from "./tenant-scope";
 
 // Pagination constants
@@ -35,13 +32,13 @@ export function buildPaginationMetadata(page: number, limit: number, total: numb
   };
 }
 
-export function applySorting(query: any, sortBy: string, sortOrder: SortOrder, tableColumns: any): any {
+export function applySorting(query: any, sortBy: string, sortOrder: SortOrder | string, tableColumns: any): any {
   if (!sortBy || !tableColumns[sortBy]) {
     return query;
   }
   
   const column = tableColumns[sortBy];
-  return sortOrder === 'desc' ? query.orderBy(desc(column)) : query.orderBy(asc(column));
+  return (sortOrder === 'desc') ? query.orderBy(desc(column)) : query.orderBy(asc(column));
 }
 
 export function applySearchFilter(query: any, search: string, searchableColumns: any[], existingPredicate?: any): any {
@@ -54,12 +51,12 @@ export function applySearchFilter(query: any, search: string, searchableColumns:
   );
   
   const searchPredicate = or(...searchConditions);
-  
+
   // Compose with existing predicate if provided - handle tenant conditions gracefully
   if (existingPredicate) {
     return query.where(and(existingPredicate, searchPredicate));
   }
-  
+
   return query.where(searchPredicate);
 }
 
@@ -100,7 +97,7 @@ export async function getCountWithSearch(
 ): Promise<number> {
   const countQuery = db.select({ count: count() }).from(table);
   
-  let conditions = [];
+  const conditions: any[] = [];
   
   // Ensure tenant conditions are properly applied in count queries
   if (additionalConditions) {
@@ -108,9 +105,7 @@ export async function getCountWithSearch(
   }
   
   if (search && searchableColumns?.length) {
-    const searchConditions = searchableColumns.map(column => 
-      ilike(column, `%${search}%`)
-    );
+    const searchConditions = searchableColumns.map(column => ilike(column, `%${search}%`));
     conditions.push(or(...searchConditions));
   }
   

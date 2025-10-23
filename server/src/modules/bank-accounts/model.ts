@@ -5,6 +5,8 @@ import { TenantModel } from '../tenants/model';
 import { withTenant, ensureTenantInsert } from '../../utils/tenant-scope';
 import { applySorting, applySearchFilter, getCountWithSearch, buildPaginationMetadata, withTenantPagination } from '../../utils/pagination';
 import { BadRequestError, NotFoundError } from '../../types';
+import { z } from 'zod';
+
 
 // Destructure what you need from the default export
 const { 
@@ -20,7 +22,19 @@ const {
 type BankAccount = typeof schema.bankAccounts.$inferSelect;
 type InsertBankAccount = typeof schema.insertBankAccountSchema._input;
 type PaginationOptions = typeof schema.PaginationOptions;
-type PaginatedResult<T> = typeof schema.PaginatedResult<T>;
+export function PaginatedResult<T extends z.ZodTypeAny>(dataSchema: T) {
+  return z.object({
+    data: z.array(dataSchema),
+    pagination: z.object({
+      page: z.number(),
+      limit: z.number(),
+      total: z.number(),
+      totalPages: z.number(),
+      hasNext: z.boolean(),
+      hasPrevious: z.boolean(),
+    }),
+  });
+}
 
 export class BankAccountModel {
   async getBankAccounts(tenantId: string): Promise<BankAccount[]> {
@@ -35,35 +49,57 @@ export class BankAccountModel {
     return bankAccount;
   }
 
-  async createBankAccount(tenantId: string, insertBankAccount: InsertBankAccount & { openingDate?: Date }): Promise<BankAccount> {
-    return await db.transaction(async (tx) => {
-      // Insert the bank account with the provided balance
-      const [created] = await tx.insert(bankAccounts)
-        .values(ensureTenantInsert(insertBankAccount, tenantId))
-        .returning();
+async createBankAccount(
+  tenantId: string,
+  insertBankAccount: InsertBankAccount & { openingDate?: Date }
+): Promise<BankAccount> {
+  return await db.transaction(async (tx) => {
+    // Destructure and validate required fields
+    const { name, accountNumber, bankName, ifscCode } = insertBankAccount;
 
-      // Check if the balance is greater than 0 and create opening balance entry
-      const balance = parseFloat(insertBankAccount.balance || '0');
-      if (balance > 0) {
-        await tx.insert(bankbook)
-          .values(ensureTenantInsert({
-            bankAccountId: created.id,
-            date: insertBankAccount.openingDate || created.createdAt || new Date(),
-            description: "Opening Balance",
-            debit: balance.toFixed(2),
-            credit: "0.00",
-            balance: balance.toFixed(2),
-            referenceType: "Opening Balance",
-            referenceId: null
-          }, tenantId));
+    if (!name || !accountNumber || !bankName || !ifscCode) {
+      throw new Error("Missing required bank account fields");
+    }
 
-        // Recalculate balance to ensure consistency
-        await BankAccountModel.recalculateBankAccountBalance(tx, tenantId, created.id);
-      }
+    // Construct the insert payload with required fields
+    const bankAccountPayload = ensureTenantInsert(
+      {
+        name,
+        accountNumber,
+        bankName,
+        ifscCode,
+        openingDate: insertBankAccount.openingDate,
+      },
+      tenantId
+    );
 
-      return created;
-    });
-  }
+    // Insert the bank account
+    const [created] = await tx.insert(bankAccounts)
+      .values(bankAccountPayload)
+      .returning();
+
+    // Handle opening balance
+    const balance = parseFloat(insertBankAccount.balance || '0');
+    if (balance > 0) {
+      await tx.insert(bankbook)
+        .values(ensureTenantInsert({
+          bankAccountId: created.id,
+          date: insertBankAccount.openingDate || created.createdAt || new Date(),
+          description: "Opening Balance",
+          debit: balance.toFixed(2),
+          credit: "0.00",
+          balance: balance.toFixed(2),
+          referenceType: "Opening Balance",
+          referenceId: null
+        }, tenantId));
+
+      await BankAccountModel.recalculateBankAccountBalance(tx, tenantId, created.id);
+    }
+
+    return created;
+  });
+}
+
 
   async updateBankAccount(tenantId: string, id: string, insertBankAccount: Partial<InsertBankAccount>): Promise<BankAccount | undefined> {
     const [updated] = await db.update(bankAccounts)

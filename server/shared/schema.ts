@@ -572,22 +572,17 @@ export const invoiceShareLinks = pgTable("invoice_share_links", {
 }));
 
 // Insert schemas
-export const insertUserSchema = createInsertSchema(users).omit({
-  id: true,
-  createdAt: true,
-}).extend({
-  username: z.string().transform(toUpperCase),
-  role: z.string().transform(toUpperCase),
-  name: z.string().transform(toUpperCase),
+export const insertUserSchema = createInsertSchema(users).extend({
+  username: z.string().transform((str) => str.toUpperCase()),
+  role: z.string().transform((str) => str.toUpperCase()),
+  name: z.string().transform((str) => str.toUpperCase()),
 });
 
-export const insertTenantSchema = createInsertSchema(tenants).omit({
-  id: true,
-  createdAt: true,
-}).extend({
-  name: z.string().transform(toUpperCase),
-  slug: z.string().transform(toUpperCase),
+export const insertTenantSchema = createInsertSchema(tenants).extend({
+  name: z.string().transform((str) => str.toUpperCase()),
+  slug: z.string().transform((str) => str.toUpperCase()),
 });
+
 
 // Phone Number Validation Schema
 export const phoneNumberSchema = z.string()
@@ -655,12 +650,12 @@ export const tenantSettingsSchema = z.object({
 export type TenantSettings = z.infer<typeof tenantSettingsSchema>;
 
 export const insertVendorSchema = createInsertSchema(vendors)
-  .omit({ id: true, balance: true, crateBalance: true, createdAt: true })
   .extend({ phone: indianTenDigitPhone })
   .extend({
     name: z.string().transform(toUpperCase),
     address: upperOpt(),
   });
+
 
 export const insertItemSchema = z.object({
   name: z.string().min(1, "Name is required").transform(toUpperCase),
@@ -687,9 +682,6 @@ export const insertBankAccountSchema = createInsertSchema(bankAccounts, {
   accountNumber: z.string().transform(toUpperCase),
   bankName: z.string().transform(toUpperCase),
   ifscCode: upperOpt(),
-}).omit({
-  id: true,
-  createdAt: true,
 }).extend({
   openingDate: z.date().optional()
 }).transform((data) => ({
@@ -697,11 +689,7 @@ export const insertBankAccountSchema = createInsertSchema(bankAccounts, {
   balance: data.balance || "0.00"
 }));
 
-export const updateBankAccountSchema = createInsertSchema(bankAccounts).omit({
-  id: true,
-  balance: true,
-  createdAt: true,
-}).extend({
+export const updateBankAccountSchema = createInsertSchema(bankAccounts).extend({
   name: z.string().transform(toUpperCase),
   accountNumber: z.string().transform(toUpperCase),
   bankName: z.string().transform(toUpperCase),
@@ -712,52 +700,32 @@ export const insertPurchaseInvoiceSchema = createInsertSchema(purchaseInvoices, 
   invoiceDate: z.union([z.string(), z.date()]).transform((val) => 
     typeof val === 'string' ? new Date(val) : val
   ),
-}).omit({
-  id: true,
-  invoiceNumber: true,
-  paidAmount: true,
-  balanceAmount: true,
-  status: true,
-  createdAt: true,
 });
 
-export const insertInvoiceItemSchema = createInsertSchema(invoiceItems).omit({
-  id: true,
-  createdAt: true,
-});
+export const insertInvoiceItemSchema = createInsertSchema(invoiceItems);
 
 export const insertPaymentSchema = createInsertSchema(payments, {
   paymentDate: z.union([z.string(), z.date()]).transform((val) => 
     typeof val === 'string' ? new Date(val) : val
   ),
-}).omit({
-  id: true,
-  createdAt: true,
 }).extend({
   chequeNumber: upperOpt(),
   upiReference: upperOpt(),
   notes: upperOpt(),
 });
 
-export const insertStockSchema = createInsertSchema(stock).omit({
-  id: true,
-  lastUpdated: true,
-});
+export const insertStockSchema = createInsertSchema(stock);
 
 export const insertStockMovementSchema = createInsertSchema(stockMovements, {
   movementDate: z.union([z.string(), z.date()]).transform((val) => 
     typeof val === 'string' ? new Date(val) : val
   ),
-}).omit({
-  id: true,
-  createdAt: true,
 }).extend({
   referenceNumber: upperOpt(),
   notes: upperOpt(),
 });
 
 export const insertRetailerSchema = createInsertSchema(retailers)
-  .omit({ id: true, balance: true, udhaaarBalance: true, shortfallBalance: true, crateBalance: true, createdAt: true })
   .extend({ phone: indianTenDigitPhone })
   .extend({
     name: z.string().transform(toUpperCase),
@@ -768,32 +736,16 @@ export const insertSalesInvoiceSchema = createInsertSchema(salesInvoices, {
   invoiceDate: z.union([z.string(), z.date()]).transform((val) => 
     typeof val === 'string' ? new Date(val) : val
   ),
-}).omit({
-  id: true,
-  invoiceNumber: true,
-  paidAmount: true,
-  balanceAmount: true,
-  udhaaarAmount: true,
-  shortfallAmount: true,
-  status: true,
-  createdAt: true,
 }).extend({
   notes: upperOpt(),
 });
 
-export const insertSalesInvoiceItemSchema = createInsertSchema(salesInvoiceItems).omit({
-  id: true,
-  invoiceId: true,
-  createdAt: true,
-});
+export const insertSalesInvoiceItemSchema = createInsertSchema(salesInvoiceItems);
 
 export const insertSalesPaymentSchema = createInsertSchema(salesPayments, {
   paymentDate: z.union([z.string(), z.date()]).transform((val) => 
     typeof val === 'string' ? new Date(val) : val
   ),
-}).omit({
-  id: true,
-  createdAt: true,
 }).extend({
   chequeNumber: upperOpt(),
   upiReference: upperOpt(),
@@ -921,7 +873,11 @@ export const insertCrateTransactionSchema = createInsertSchema(crateTransactions
     required_error: "Party type is required",
     invalid_type_error: "Party type must be 'retailer' or 'vendor'"
   }),
-  transactionType: z.enum([CRATE_TRANSACTION_TYPES.GIVEN, CRATE_TRANSACTION_TYPES.RECEIVED, CRATE_TRANSACTION_TYPES.RETURNED], {
+  transactionType: z.enum([
+    CRATE_TRANSACTION_TYPES.GIVEN, 
+    CRATE_TRANSACTION_TYPES.RECEIVED, 
+    CRATE_TRANSACTION_TYPES.RETURNED
+  ], {
     required_error: "Transaction type is required"
   }),
   transactionDate: z.union([z.string(), z.date()]).transform((val) => 
@@ -935,33 +891,17 @@ export const insertCrateTransactionSchema = createInsertSchema(crateTransactions
     return num;
   }),
   notes: z.string().nullable().optional().transform(toUpperCase),
-}).omit({
-  id: true,
-  createdAt: true,
 }).refine((data) => {
-  // Ensure either retailerId or vendorId is provided based on partyType
-  if (data.partyType === 'retailer' && !data.retailerId) {
-    return false;
-  }
-  if (data.partyType === 'vendor' && !data.vendorId) {
-    return false;
-  }
-  // Ensure the opposite party ID is not set
-  if (data.partyType === 'retailer' && data.vendorId) {
-    return false;
-  }
-  if (data.partyType === 'vendor' && data.retailerId) {
-    return false;
-  }
+  if (data.partyType === 'retailer' && !data.retailerId) return false;
+  if (data.partyType === 'vendor' && !data.vendorId) return false;
+  if (data.partyType === 'retailer' && data.vendorId) return false;
+  if (data.partyType === 'vendor' && data.retailerId) return false;
   return true;
 }, {
   message: "Party ID must match the party type",
 });
 
-export const insertExpenseCategorySchema = createInsertSchema(expenseCategories).omit({
-  id: true,
-  createdAt: true,
-}).extend({
+export const insertExpenseCategorySchema = createInsertSchema(expenseCategories).extend({
   name: z.string().transform(toUpperCase),
   description: upperOpt(),
 });
@@ -970,9 +910,6 @@ export const insertExpenseSchema = createInsertSchema(expenses, {
   paymentDate: z.union([z.string(), z.date()]).transform((val) => 
     typeof val === 'string' ? new Date(val) : val
   ),
-}).omit({
-  id: true,
-  createdAt: true,
 }).extend({
   chequeNumber: upperOpt(),
   upiReference: upperOpt(),
@@ -987,27 +924,17 @@ export const insertWhatsAppMessageSchema = createInsertSchema(whatsappMessages, 
   deliveredAt: z.union([z.string(), z.date()]).transform((val) => 
     typeof val === 'string' ? new Date(val) : val
   ).optional(),
-}).omit({
-  id: true,
-  createdAt: true,
 }).extend({
   referenceNumber: z.string().transform(toUpperCase),
   errorMessage: upperOpt(),
 });
 
-export const insertWhatsAppCreditTransactionSchema = createInsertSchema(whatsappCreditTransactions).omit({
-  id: true,
-  createdAt: true,
-});
+export const insertWhatsAppCreditTransactionSchema = createInsertSchema(whatsappCreditTransactions);
 
 export const insertInvoiceShareLinkSchema = createInsertSchema(invoiceShareLinks, {
   invoiceType: z.enum(['purchase', 'sales']),
-}).omit({
-  id: true,
-  createdAt: true,
-  accessCount: true,
-  lastAccessedAt: true,
 });
+
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -1484,6 +1411,190 @@ export const reportDateRangeSchema = z.object({
 });
 
 
+// ============================================
+// ZOD SCHEMAS FOR REPORT AND PAGINATION TYPES
+// ============================================
+
+// Pagination Zod Schemas
+export const PaginationMetadataSchema = z.object({
+  page: z.number(),
+  limit: z.number(),
+  total: z.number(),
+  totalPages: z.number(),
+  hasNext: z.boolean(),
+  hasPrevious: z.boolean()
+});
+
+export const SortOrderSchema = z.enum(['asc', 'desc']);
+
+// Generic PaginatedResult schema constructor
+export function PaginatedResultSchema<T extends z.ZodTypeAny>(dataSchema: T) {
+  return z.object({
+    data: z.array(dataSchema),
+    pagination: PaginationMetadataSchema
+  });
+}
+
+// Report Data Zod Schemas
+export const TurnoverReportEntrySchema = z.object({
+  date: z.string(),
+  salesAmount: z.string(),
+  purchaseAmount: z.string(),
+  netTurnover: z.string()
+});
+
+export const TurnoverReportDataSchema = z.object({
+  entries: z.array(TurnoverReportEntrySchema),
+  totalSales: z.string(),
+  totalPurchases: z.string(),
+  netTurnover: z.string(),
+  fromDate: z.string().optional(),
+  toDate: z.string().optional()
+});
+
+export const ProfitLossReportDataSchema = z.object({
+  revenue: z.string(),
+  costs: z.string(),
+  grossProfit: z.string(),
+  expenses: z.string(),
+  netProfit: z.string(),
+  fromDate: z.string().optional(),
+  toDate: z.string().optional()
+});
+
+export const CommissionReportEntrySchema = z.object({
+  invoiceNumber: z.string(),
+  invoiceDate: z.string(),
+  vendorName: z.string(),
+  retailerName: z.string().optional(),
+  totalAmount: z.string(),
+  commissionRate: z.string(),
+  commissionAmount: z.string()
+});
+
+export const CommissionReportDataSchema = z.object({
+  entries: z.array(CommissionReportEntrySchema),
+  totalCommission: z.string(),
+  fromDate: z.string().optional(),
+  toDate: z.string().optional()
+});
+
+export const ShortfallReportEntrySchema = z.object({
+  retailerId: z.string(),
+  retailerName: z.string(),
+  shortfallBalance: z.string(),
+  lastTransactionDate: z.string()
+});
+
+export const ShortfallReportDataSchema = z.object({
+  entries: z.array(ShortfallReportEntrySchema),
+  totalShortfall: z.string(),
+  fromDate: z.string().optional(),
+  toDate: z.string().optional()
+});
+
+export const ExpensesSummaryEntrySchema = z.object({
+  category: z.string(),
+  amount: z.string(),
+  count: z.number(),
+  percentage: z.string()
+});
+
+export const ExpensesSummaryDataSchema = z.object({
+  entries: z.array(ExpensesSummaryEntrySchema),
+  totalExpenses: z.string(),
+  fromDate: z.string().optional(),
+  toDate: z.string().optional()
+});
+
+export const VendorListEntrySchema = z.object({
+  vendorId: z.string(),
+  vendorName: z.string(),
+  phone: z.string().nullable(),
+  address: z.string().nullable(),
+  balance: z.string()
+});
+
+export const VendorsListDataSchema = z.object({
+  entries: z.array(VendorListEntrySchema),
+  totalPayable: z.string()
+});
+
+export const RetailerListEntrySchema = z.object({
+  retailerId: z.string(),
+  retailerName: z.string(),
+  phone: z.string().nullable(),
+  address: z.string().nullable(),
+  udhaaarBalance: z.string()
+});
+
+export const RetailersListDataSchema = z.object({
+  entries: z.array(RetailerListEntrySchema),
+  totalReceivable: z.string()
+});
+
+// Sales Invoice with Details Schema (for PDF generation)
+export const SalesInvoiceItemSchema = z.object({
+  id: z.string(),
+  invoiceNumber: z.string(),
+  invoiceDate: z.date(),
+  totalAmount: z.string(),
+  paidAmount: z.string(),
+  balanceAmount: z.string(),
+  status: z.string(),
+  retailer: z.object({ /* ... */ }),
+  items: z.array(z.object({ /* ... */ })),
+  payments: z.array(z.object({ /* ... */ }))
+});
+
+export const SalesInvoiceWithDetailsSchema = z.object({
+  id: z.string(),
+  invoiceNumber: z.string(),
+  invoiceDate: z.date(),
+  totalAmount: z.string(),
+  paidAmount: z.string(),
+  balanceAmount: z.string(),
+  status: z.string(),
+  retailer: z.object({
+    id: z.string(),
+    name: z.string(),
+    phone: z.string().nullable(),
+    address: z.string().nullable()
+  }),
+  items: z.array(SalesInvoiceItemSchema),
+  payments: z.array(z.any())
+});
+
+// Purchase Invoice with Details Schema (for PDF generation)
+export const InvoiceItemSchema = z.object({
+  id: z.string(),
+  itemId: z.string(),
+  weight: z.string(),
+  crates: z.string(),
+  boxes: z.string(),
+  rate: z.string(),
+  amount: z.string()
+});
+
+export const InvoiceWithItemsSchema = z.object({
+  id: z.string(),
+  invoiceNumber: z.string(),
+  invoiceDate: z.date(),
+  netAmount: z.string(),
+  paidAmount: z.string(),
+  balanceAmount: z.string(),
+  status: z.string(),
+  vendor: z.object({
+    id: z.string(),
+    name: z.string(),
+    phone: z.string().nullable(),
+    address: z.string().nullable()
+  }),
+  items: z.array(InvoiceItemSchema)
+});
+
+
+// Export everything as default for compatibility with tsx
 // Export everything as default for compatibility with tsx
 export default {
   // Tables
@@ -1507,8 +1618,31 @@ export default {
   loginSchema, refreshTokenSchema, phoneNumberSchema, indianTenDigitPhone,
   tenantSettingsSchema, reportDateRangeSchema,
   
+  // Pagination & Sorting Schemas
+  PaginationMetadata: PaginationMetadataSchema,
+  PaginatedResult: PaginatedResultSchema,
+  SortOrder: SortOrderSchema,
+  
+  // Report Data Schemas
+  TurnoverReportData: TurnoverReportDataSchema,
+  ProfitLossReportData: ProfitLossReportDataSchema,
+  CommissionReportData: CommissionReportDataSchema,
+  ShortfallReportData: ShortfallReportDataSchema,
+  ExpensesSummaryData: ExpensesSummaryDataSchema,
+  VendorsListData: VendorsListDataSchema,
+  RetailersListData: RetailersListDataSchema,
+  
+  // Invoice Detail Schemas
+  SalesInvoiceWithDetails: SalesInvoiceWithDetailsSchema,
+  InvoiceWithItems: InvoiceWithItemsSchema,
+  
+  // Tenant Settings
+  TenantSettings: tenantSettingsSchema,
+  
   // Types (interfaces need to be re-exported differently)
   PaginationOptions: {} as any,
-  PaginatedResult: {} as any,
   // Add other interface types here
 };
+
+
+

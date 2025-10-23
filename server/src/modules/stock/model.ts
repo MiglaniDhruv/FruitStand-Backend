@@ -1,5 +1,6 @@
 import { eq, desc, asc, and, or, count, ilike, lte, inArray, isNull, ne } from "drizzle-orm";
 import schema from '../../../shared/schema.js';
+import { z } from "zod";
 
 const { 
   stock,
@@ -14,7 +15,19 @@ type StockMovement = typeof schema.stockMovements.$inferSelect;
 type InsertStockMovement = typeof schema.insertStockMovementSchema._input;
 type StockWithItem = typeof schema.StockWithItem;
 type PaginationOptions = typeof schema.PaginationOptions;
-type PaginatedResult<T> = typeof schema.PaginatedResult<T>;
+export function PaginatedResult<T extends z.ZodTypeAny>(dataSchema: T) {
+  return z.object({
+    data: z.array(dataSchema),
+    pagination: z.object({
+      page: z.number(),
+      limit: z.number(),
+      total: z.number(),
+      totalPages: z.number(),
+      hasNext: z.boolean(),
+      hasPrevious: z.boolean(),
+    }),
+  });
+}
 import { db } from "../../../db";
 import {
   normalizePaginationOptions,
