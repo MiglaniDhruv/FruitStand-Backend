@@ -12,13 +12,17 @@ export interface AuthUser {
   permissions: string[];
 }
 
-// Authenticated request interface
+import { Request } from "express";
+import { Tenant } from "../modules/tenants/model";
+import { UserRole } from "../modules/users/model";
+
 export interface AuthenticatedRequest extends Request {
   user?: { id: string; username: string; role: UserRole; tenantId: string };
   tenantId?: string;
   tenant?: Tenant;
   requestId?: string;
 }
+
 
 // Common API response structures
 export interface ApiResponse<T = any> {
