@@ -1,14 +1,17 @@
 import { eq, asc, and, or, gt, count } from "drizzle-orm";
-import { 
+import schema from '../../../shared/schema.js';
+
+const { 
   items,
   vendors,
-  stock,
-  type Item, 
-  type InsertItem,
-  type ItemWithVendor,
-  type PaginationOptions,
-  type PaginatedResult
-} from "@shared/schema";
+  stock
+} = schema;
+
+type Item = typeof schema.items.$inferSelect;
+type InsertItem = typeof schema.insertItemSchema._input;
+type ItemWithVendor = typeof schema.ItemWithVendor;
+type PaginationOptions = typeof schema.PaginationOptions;
+type PaginatedResult<T> = typeof schema.PaginatedResult<T>;
 import { db } from "../../../db";
 import {
   normalizePaginationOptions,

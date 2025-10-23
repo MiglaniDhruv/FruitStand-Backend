@@ -1,5 +1,9 @@
 import { Request, Response, NextFunction, Router } from "express";
-import { PaginationOptions, PaginationMetadata, PaginatedResult } from "@shared/schema";
+import schema from '../../shared/schema.js';
+
+type PaginationOptions = typeof schema.PaginationOptions;
+type PaginationMetadata = typeof schema.PaginationMetadata;
+type PaginatedResult<T> = typeof schema.PaginatedResult<T>;
 import { ValidationError, NotFoundError, BadRequestError } from "../types";
 import { handleDatabaseError } from "./database-errors";
 import { asyncHandler } from "./async-handler";

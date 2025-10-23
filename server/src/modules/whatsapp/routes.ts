@@ -6,7 +6,7 @@ import {
   attachTenantContext, 
   requirePermission 
 } from '../../middleware/auth';
-import { PERMISSIONS } from '@shared/permissions';
+import { PERMISSIONS } from '../../../shared/permissions.js';
 import { asyncHandler } from '../../utils/async-handler';
 
 export class WhatsAppRouter extends BaseRouter {

@@ -1,6 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
 import "dotenv/config";
-import { setupVite, serveStatic, log } from "./vite";
 import { closeDatabase } from "./db";
 import { extractTenantSlug } from "./src/middleware/tenant-slug";
 import { SYSTEM_ROUTES } from "./src/constants/routes";
@@ -36,6 +35,14 @@ import { tenantRouter } from "./src/modules/tenants";
 import { whatsappRouter } from "./src/modules/whatsapp";
 import { publicRouter } from "./src/modules/public/router";
 import { reportRouter } from "./src/modules/reports";
+import cors from 'cors';
+import session from 'express-session';
+
+
+// Simple logging function
+const log = (message: string) => {
+  console.log(`[${new Date().toISOString()}] ${message}`);
+};
 
 // Server reference for graceful shutdown
 let server: any = null;
@@ -130,6 +137,23 @@ process.on('SIGINT', () => {
 });
 
 const app = express();
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your-secret-key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: false,   // true if HTTPS
+    httpOnly: true,
+    sameSite: 'lax', // works for localhost cross-origin
+  },
+}));
+
+
+// Allow frontend requests
+app.use(cors({
+  origin: 'http://localhost:5173', // frontend URL
+  credentials: true,               // allow cookies/sessions
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -272,20 +296,7 @@ app.use(asyncHandler(extractTenantSlug));
   app.use("/api", tenantRouter.getRouter());
   app.use("/api", whatsappRouter.getRouter());
 
-  // Setup server for WebSocket support (required for Vite HMR)
-  const { createServer } = await import("http");
-  server = createServer(app);
-
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    await setupVite(app, server);
-  }
-
-  // Handle 404 for API routes (after Vite setup)
+  // Handle 404 for API routes
   app.use("/api/*", (req: Request, res: Response) => {
     log(`404 - API route not found: ${req.method} ${req.path}`);
     res.status(404).json({ 
@@ -304,8 +315,6 @@ app.use(asyncHandler(extractTenantSlug));
 
   // Global error handling middleware (must be last)
   app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
-    // Use static imports that are already available at the top of the file
-
     let error = err;
 
     // Handle Zod validation errors - map to 400 status with structured payload
@@ -401,20 +410,22 @@ app.use(asyncHandler(extractTenantSlug));
     return res.status(500).json(response);
   });
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
+  // Setup HTTP server
+  const { createServer } = await import("http");
+  server = createServer(app);
+
+  // Start server
   const port = parseInt(process.env.PORT || '5000', 10);
+  const host = process.platform === "win32" ? "127.0.0.1" : "0.0.0.0";
+
   server.listen({
     port,
-    host: "0.0.0.0",
-    reusePort: true,
+    host,
   }, () => {
-    log(`serving on port ${port}`);
-    
+    log(`Backend API server running on http://${host}:${port}`);
+    log(`Health check available at http://${host}:${port}/api/health`);
+
     // Start database health monitoring after server is up
     startDatabaseHealthMonitoring(30000); // Check every 30 seconds
   });
-
 })();

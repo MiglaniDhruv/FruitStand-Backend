@@ -1,29 +1,31 @@
 import { sum, gte, lte, and, sql, eq, desc, count, asc } from 'drizzle-orm';
 import { db } from '../../../db';
-import { 
+import schema from '../../../shared/schema.js';
+
+const { 
   salesInvoices, 
   purchaseInvoices, 
   expenses,
   vendors,
   retailers,
   expenseCategories
-} from '@shared/schema';
+} = schema;
 import { withTenant } from '../../utils/tenant-scope';
 import { TenantModel } from '../tenants/model';
-import type { 
-  TurnoverReportData, 
-  ProfitLossReportData, 
-  CommissionReportData,
-  CommissionReportEntry,
-  ShortfallReportEntry,
-  ShortfallReportData,
-  ExpensesSummaryEntry,
-  ExpensesSummaryData,
-  VendorListEntry,
-  VendorsListData,
-  RetailerListEntry,
-  RetailersListData
-} from '@shared/schema';
+import schema from '../../../shared/schema.js';
+
+type TurnoverReportData = typeof schema.TurnoverReportData;
+type ProfitLossReportData = typeof schema.ProfitLossReportData;
+type CommissionReportData = typeof schema.CommissionReportData;
+type CommissionReportEntry = typeof schema.CommissionReportEntry;
+type ShortfallReportEntry = typeof schema.ShortfallReportEntry;
+type ShortfallReportData = typeof schema.ShortfallReportData;
+type ExpensesSummaryEntry = typeof schema.ExpensesSummaryEntry;
+type ExpensesSummaryData = typeof schema.ExpensesSummaryData;
+type VendorListEntry = typeof schema.VendorListEntry;
+type VendorsListData = typeof schema.VendorsListData;
+type RetailerListEntry = typeof schema.RetailerListEntry;
+type RetailersListData = typeof schema.RetailersListData;
 
 export class ReportModel {
   async getTurnoverReport(tenantId: string, fromDate?: string, toDate?: string): Promise<TurnoverReportData> {

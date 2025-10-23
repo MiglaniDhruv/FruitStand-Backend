@@ -3,7 +3,9 @@ import { z } from 'zod';
 import { BaseController } from '../../utils/base';
 import { RetailerModel } from './model';
 import { SalesPaymentModel } from '../sales-payments/model';
-import { insertRetailerSchema, insertRetailerPaymentSchema } from '@shared/schema';
+import schema from '../../../shared/schema.js';
+
+const { insertRetailerSchema, insertRetailerPaymentSchema } = schema;
 import { type AuthenticatedRequest, NotFoundError, ValidationError, BadRequestError, ForbiddenError } from '../../types';
 import { whatsAppService } from '../../services/whatsapp';
 

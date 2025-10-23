@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
-import { insertExpenseCategorySchema, insertExpenseSchema } from '@shared/schema';
+import schema from '../../../shared/schema.js';
+
+const { insertExpenseCategorySchema, insertExpenseSchema } = schema;
 import { BaseController } from '../../utils/base';
 import { ExpenseModel } from './model';
 import { type AuthenticatedRequest, ForbiddenError, BadRequestError, NotFoundError, ValidationError } from '../../types';

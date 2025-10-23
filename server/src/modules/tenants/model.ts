@@ -1,6 +1,6 @@
 import { eq, like, or, sql, and } from "drizzle-orm";
 import { db } from "../../../db";
-import { tenants, type Tenant, type InsertTenant, type PaginationOptions, type PaginatedResult } from "@shared/schema";
+import schema from '../../../shared/schema.js';
 import { WhatsAppCreditModel } from '../whatsapp/credit-model.js';
 import { LedgerModel } from '../ledgers/model';
 import { 
@@ -10,6 +10,12 @@ import {
   getCountWithSearch,
   buildPaginationMetadata
 } from "../../utils/pagination";
+
+const { tenants } = schema;
+type Tenant = typeof schema.tenants.$inferSelect;
+type InsertTenant = typeof schema.insertTenantSchema._input;
+type PaginationOptions = typeof schema.PaginationOptions;
+type PaginatedResult<T> = typeof schema.PaginatedResult<T>;
 
 export class TenantModel {
   /**

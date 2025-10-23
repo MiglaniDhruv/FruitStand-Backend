@@ -1,10 +1,11 @@
 import { eq, and, sql } from 'drizzle-orm';
 import { db } from '../../../db.js';
 import crypto from 'crypto';
-import {
+import schema from '../../../shared/schema.js';
+import { withTenant, ensureTenantInsert } from '../../utils/tenant-scope.js';
+
+const {
   invoiceShareLinks,
-  InvoiceShareLink,
-  InsertInvoiceShareLink,
   purchaseInvoices,
   salesInvoices,
   vendors,
@@ -14,10 +15,12 @@ import {
   payments,
   salesPayments,
   tenants,
-  items,
-  PublicInvoiceData
-} from '@shared/schema';
-import { withTenant, ensureTenantInsert } from '../../utils/tenant-scope.js';
+  items
+} = schema;
+
+type InvoiceShareLink = typeof schema.invoiceShareLinks.$inferSelect;
+type InsertInvoiceShareLink = typeof schema.insertInvoiceShareLinkSchema._input;
+type PublicInvoiceData = typeof schema.PublicInvoiceData;
 
 export class InvoiceShareLinkModel {
   /**

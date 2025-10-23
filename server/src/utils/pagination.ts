@@ -1,6 +1,10 @@
 import { eq, desc, asc, ilike, or, and, count } from "drizzle-orm";
 import { db } from "../../db";
-import { type PaginationOptions, type PaginationMetadata, type SortOrder } from "@shared/schema";
+import schema from '../../shared/schema.js';
+
+type PaginationOptions = typeof schema.PaginationOptions;
+type PaginationMetadata = typeof schema.PaginationMetadata;
+type SortOrder = typeof schema.SortOrder;
 import { withTenant } from "./tenant-scope";
 
 // Pagination constants

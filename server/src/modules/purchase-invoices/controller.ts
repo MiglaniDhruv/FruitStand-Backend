@@ -2,7 +2,9 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { BaseController } from '../../utils/base';
 import { PurchaseInvoiceModel } from './model';
-import { insertPurchaseInvoiceSchema, insertInvoiceItemSchema, insertCrateTransactionSchema, payments, INVOICE_STATUS } from '@shared/schema';
+import schema from '../../../shared/schema.js';
+
+const { insertPurchaseInvoiceSchema, insertInvoiceItemSchema, insertCrateTransactionSchema, payments, INVOICE_STATUS } = schema;
 import { type AuthenticatedRequest, ForbiddenError, BadRequestError, NotFoundError } from '../../types';
 import { invoiceGenerator } from '../../services/pdf';
 import { TenantModel } from '../tenants/model';

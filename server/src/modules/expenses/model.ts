@@ -1,6 +1,16 @@
 import { eq, desc, asc, inArray, and, count } from 'drizzle-orm';
 import { db } from '../../../db';
-import { expenseCategories, expenses, bankAccounts, cashbook, bankbook, type ExpenseCategory, type InsertExpenseCategory, type Expense, type InsertExpense, type ExpenseWithCategory, type PaginationOptions, type PaginatedResult } from '@shared/schema';
+import schema from '../../../shared/schema.js';
+
+const { expenseCategories, expenses, bankAccounts, cashbook, bankbook } = schema;
+
+type ExpenseCategory = typeof schema.expenseCategories.$inferSelect;
+type InsertExpenseCategory = typeof schema.insertExpenseCategorySchema._input;
+type Expense = typeof schema.expenses.$inferSelect;
+type InsertExpense = typeof schema.insertExpenseSchema._input;
+type ExpenseWithCategory = typeof schema.ExpenseWithCategory;
+type PaginationOptions = typeof schema.PaginationOptions;
+type PaginatedResult<T> = typeof schema.PaginatedResult<T>;
 import { withTenant, ensureTenantInsert } from '../../utils/tenant-scope';
 import { BankAccountModel } from '../bank-accounts/model';
 import { TenantModel } from '../tenants/model';

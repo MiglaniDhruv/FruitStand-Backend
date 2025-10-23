@@ -1,19 +1,5 @@
 import { eq, asc, and, inArray, count, sum } from "drizzle-orm";
-import { 
-  vendors,
-  purchaseInvoices,
-  invoiceItems,
-  payments,
-  stockMovements,
-  whatsappMessages,
-  items,
-  salesInvoiceItems,
-  stock,
-  type Vendor, 
-  type InsertVendor,
-  type PaginationOptions,
-  type PaginatedResult
-} from "@shared/schema";
+import schema from '../../../shared/schema.js';
 import { db } from "../../../db";
 import {
   normalizePaginationOptions,
@@ -26,6 +12,23 @@ import {
 import { withTenant, ensureTenantInsert } from "../../utils/tenant-scope";
 import { ValidationError, AppError, NotFoundError } from "../../types";
 import { handleDatabaseError } from "../../utils/database-errors";
+
+const { 
+  vendors,
+  purchaseInvoices,
+  invoiceItems,
+  payments,
+  stockMovements,
+  whatsappMessages,
+  items,
+  salesInvoiceItems,
+  stock
+} = schema;
+
+type Vendor = typeof schema.vendors.$inferSelect;
+type InsertVendor = typeof schema.insertVendorSchema._input;
+type PaginationOptions = typeof schema.PaginationOptions;
+type PaginatedResult<T> = typeof schema.PaginatedResult<T>;
 
 export class VendorModel {
   async getVendors(tenantId: string): Promise<Vendor[]> {

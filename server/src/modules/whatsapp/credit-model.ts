@@ -1,7 +1,14 @@
 import { db } from '../../../db';
-import { tenants, whatsappCreditTransactions, type InsertWhatsAppCreditTransaction, type WhatsAppCreditTransaction } from '@shared/schema';
+import schema from '../../../shared/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { withTenant, ensureTenantInsert } from '../../utils/tenant-scope';
+
+// Destructure what you need from the default export
+const { tenants, whatsappCreditTransactions } = schema;
+
+// Define types from the schema
+type InsertWhatsAppCreditTransaction = typeof schema.insertWhatsAppCreditTransactionSchema._input;
+type WhatsAppCreditTransaction = typeof schema.whatsappCreditTransactions.$inferSelect;
 
 export interface CreditCheckResult {
   hasCredits: boolean;

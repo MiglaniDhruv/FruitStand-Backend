@@ -1,13 +1,13 @@
 import PDFDocument from 'pdfkit';
 import { PassThrough } from 'stream';
-import { 
-  SalesInvoiceWithDetails, 
-  Tenant,
-  ShortfallReportData,
-  ExpensesSummaryData,
-  VendorsListData,
-  RetailersListData
-} from '@shared/schema';
+import schema from '../../../shared/schema.js';
+
+type SalesInvoiceWithDetails = typeof schema.SalesInvoiceWithDetails;
+type Tenant = typeof schema.tenants.$inferSelect;
+type ShortfallReportData = typeof schema.ShortfallReportData;
+type ExpensesSummaryData = typeof schema.ExpensesSummaryData;
+type VendorsListData = typeof schema.VendorsListData;
+type RetailersListData = typeof schema.RetailersListData;
 import { 
   renderSalesInvoiceTemplate,
   renderPurchaseInvoiceTemplate,

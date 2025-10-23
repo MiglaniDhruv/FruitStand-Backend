@@ -1,5 +1,7 @@
 import { Request } from "express";
-import { type Tenant } from "@shared/schema";
+import schema from '../../shared/schema.js';
+
+type Tenant = typeof schema.tenants.$inferSelect;
 
 // Authentication related types
 export interface AuthUser {

@@ -1,10 +1,12 @@
 import * as cron from 'node-cron';
 import { db } from '../../../db.js';
-import { salesInvoices, purchaseInvoices, tenants } from '@shared/schema';
 import { eq, and, lt, or, inArray, gt } from 'drizzle-orm';
 import { whatsAppService } from './whatsapp-service.js';
 import { TenantModel } from '../../modules/tenants/model.js';
 import { withTenant } from '../../utils/tenant-scope.js';
+import schema from '../../../shared/schema.js';
+
+const { salesInvoices, purchaseInvoices, tenants } = schema;
 
 // Global scheduler configuration (fallback if tenant settings not available)
 const SCHEDULER_CRON = process.env.PAYMENT_REMINDER_CRON || '0 * * * *'; // Default: Every hour

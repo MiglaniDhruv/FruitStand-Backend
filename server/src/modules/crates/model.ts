@@ -1,6 +1,14 @@
 import { eq, desc, asc, and, or, gte, lte, ilike, inArray, count, sql } from 'drizzle-orm';
 import { db } from '../../../db';
-import { crateTransactions, retailers, vendors, CRATE_TRANSACTION_TYPES, type CrateTransaction, type InsertCrateTransaction, type CrateTransactionWithParty, type PaginationOptions, type PaginatedResult } from '@shared/schema';
+import schema from '../../../shared/schema.js';
+
+const { crateTransactions, retailers, vendors, CRATE_TRANSACTION_TYPES } = schema;
+
+type CrateTransaction = typeof schema.crateTransactions.$inferSelect;
+type InsertCrateTransaction = typeof schema.insertCrateTransactionSchema._input;
+type CrateTransactionWithParty = typeof schema.CrateTransactionWithParty;
+type PaginationOptions = typeof schema.PaginationOptions;
+type PaginatedResult<T> = typeof schema.PaginatedResult<T>;
 import { normalizePaginationOptions, buildPaginationMetadata } from '../../utils/pagination';
 import { withTenant, ensureTenantInsert } from '../../utils/tenant-scope';
 

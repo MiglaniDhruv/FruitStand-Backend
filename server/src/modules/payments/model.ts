@@ -1,6 +1,14 @@
 import { eq, desc, inArray, and, or, gt, asc, sum, sql } from 'drizzle-orm';
 import { db } from '../../../db';
-import { payments, purchaseInvoices, vendors, bankAccounts, cashbook, bankbook, type Payment, type InsertPayment, type PaymentWithDetails, type PurchaseInvoice, type VendorPaymentDistributionResult } from '@shared/schema';
+import schema from '../../../shared/schema.js';
+
+const { payments, purchaseInvoices, vendors, bankAccounts, cashbook, bankbook } = schema;
+
+type Payment = typeof schema.payments.$inferSelect;
+type InsertPayment = typeof schema.insertPaymentSchema._input;
+type PaymentWithDetails = typeof schema.PaymentWithDetails;
+type PurchaseInvoice = typeof schema.purchaseInvoices.$inferSelect;
+type VendorPaymentDistributionResult = typeof schema.VendorPaymentDistributionResult;
 import { withTenant, ensureTenantInsert } from '../../utils/tenant-scope';
 import { BankAccountModel } from '../bank-accounts/model';
 import { TenantModel } from '../tenants/model';

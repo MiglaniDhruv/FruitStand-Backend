@@ -1,6 +1,14 @@
 import { eq, sum, gte, lte, inArray, desc, and, asc, sql } from 'drizzle-orm';
 import { db } from '../../../db';
-import { vendors, retailers, purchaseInvoices, salesInvoices, tenants, expenses, DashboardKPIs, RecentPurchase, RecentSale, FavouriteRetailer, FavouriteVendor } from '@shared/schema';
+import schema from '../../../shared/schema.js';
+
+const { vendors, retailers, purchaseInvoices, salesInvoices, tenants, expenses } = schema;
+
+type DashboardKPIs = typeof schema.DashboardKPIs;
+type RecentPurchase = typeof schema.RecentPurchase;
+type RecentSale = typeof schema.RecentSale;
+type FavouriteRetailer = typeof schema.FavouriteRetailer;
+type FavouriteVendor = typeof schema.FavouriteVendor;
 import { withTenant } from '../../utils/tenant-scope';
 import { TenantModel } from '../tenants/model';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';

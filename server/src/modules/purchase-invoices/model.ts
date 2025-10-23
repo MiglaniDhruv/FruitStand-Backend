@@ -1,12 +1,36 @@
 import { eq, desc, asc, and, or, gte, lte, ilike, inArray, count, sql, isNull } from 'drizzle-orm';
 import { db } from '../../../db';
-import { purchaseInvoices, invoiceItems, vendors, items, invoiceShareLinks, stockMovements, payments, crateTransactions, CRATE_TRANSACTION_TYPES, INVOICE_STATUS, type PurchaseInvoice, type InsertPurchaseInvoice, type InsertInvoiceItem, type InsertCrateTransaction, type InvoiceWithItems, type PaginationOptions, type PaginatedResult, type InvoiceShareLink, type CrateTransaction } from '@shared/schema';
 import { normalizePaginationOptions, buildPaginationMetadata, withTenantPagination } from '../../utils/pagination';
 import { withTenant, ensureTenantInsert } from '../../utils/tenant-scope';
 import { assertSameTenant } from '../../utils/tenant';
 import { InvoiceShareLinkModel } from '../invoice-share-links/model';
 import { NotFoundError, ValidationError, BadRequestError, ConflictError, AppError } from '../../types';
 import { handleDatabaseError } from '../../utils/database-errors';
+import schema from '../../../shared/schema.js';
+
+const { 
+  purchaseInvoices, 
+  invoiceItems, 
+  vendors, 
+  items, 
+  invoiceShareLinks, 
+  stockMovements, 
+  payments, 
+  crateTransactions, 
+  CRATE_TRANSACTION_TYPES, 
+  INVOICE_STATUS 
+} = schema;
+
+type PurchaseInvoice = typeof schema.purchaseInvoices.$inferSelect;
+type InsertPurchaseInvoice = typeof schema.insertPurchaseInvoiceSchema._input;
+type InsertInvoiceItem = typeof schema.insertInvoiceItemSchema._input;
+type InsertCrateTransaction = typeof schema.insertCrateTransactionSchema._input;
+type InvoiceWithItems = typeof schema.InvoiceWithItems;
+type PaginationOptions = typeof schema.PaginationOptions;
+type PaginatedResult<T> = typeof schema.PaginatedResult<T>;
+type InvoiceShareLink = typeof schema.invoiceShareLinks.$inferSelect;
+type CrateTransaction = typeof schema.crateTransactions.$inferSelect;
+
 
 // Local type that extends InvoiceWithItems to include optional crate transaction
 type InvoiceWithItemsAndCrate = InvoiceWithItems & {

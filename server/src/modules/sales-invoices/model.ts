@@ -1,6 +1,31 @@
 import { eq, desc, asc, and, or, gte, lte, ilike, inArray, count, sql, sum } from 'drizzle-orm';
 import { db } from '../../../db';
-import { salesInvoices, salesInvoiceItems, retailers, salesPayments, invoiceShareLinks, stockMovements, crateTransactions, items, CRATE_TRANSACTION_TYPES, INVOICE_STATUS, type SalesInvoice, type InsertSalesInvoice, type InsertSalesInvoiceItem, type InsertCrateTransaction, type SalesInvoiceWithDetails, type PaginationOptions, type PaginatedResult, type Retailer, type InvoiceShareLink, type CrateTransaction } from '@shared/schema';
+import schema from '../../../shared/schema.js';
+
+const { 
+  salesInvoices, 
+  salesInvoiceItems, 
+  retailers, 
+  salesPayments, 
+  invoiceShareLinks, 
+  stockMovements, 
+  crateTransactions, 
+  items, 
+  CRATE_TRANSACTION_TYPES, 
+  INVOICE_STATUS 
+} = schema;
+
+type SalesInvoice = typeof schema.salesInvoices.$inferSelect;
+type InsertSalesInvoice = typeof schema.insertSalesInvoiceSchema._input;
+type InsertSalesInvoiceItem = typeof schema.insertSalesInvoiceItemSchema._input;
+type InsertCrateTransaction = typeof schema.insertCrateTransactionSchema._input;
+type SalesInvoiceWithDetails = typeof schema.SalesInvoiceWithDetails;
+type PaginationOptions = typeof schema.PaginationOptions;
+type PaginatedResult<T> = typeof schema.PaginatedResult<T>;
+type Retailer = typeof schema.retailers.$inferSelect;
+type InvoiceShareLink = typeof schema.invoiceShareLinks.$inferSelect;
+type CrateTransaction = typeof schema.crateTransactions.$inferSelect;
+
 import { normalizePaginationOptions, buildPaginationMetadata } from '../../utils/pagination';
 import { withTenant, ensureTenantInsert } from '../../utils/tenant-scope';
 import { InvoiceShareLinkModel } from '../invoice-share-links/model';

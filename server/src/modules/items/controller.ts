@@ -3,7 +3,9 @@ import { z } from "zod";
 import { BaseController } from "../../utils/base";
 import { ItemModel } from "./model";
 import { AuthenticatedRequest, ForbiddenError, BadRequestError, NotFoundError, ValidationError } from "../../types";
-import { insertItemSchema } from "@shared/schema";
+import schema from '../../../shared/schema.js';
+
+const { insertItemSchema } = schema;
 
 const itemValidation = {
   getItemsPaginated: z.object({

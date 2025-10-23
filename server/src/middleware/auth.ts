@@ -77,7 +77,7 @@ export const requirePermission = (permissions: string[]) => async (req: Authenti
 
   // Import UserModel dynamically to avoid circular dependencies
   const { UserModel } = await import('../modules/users/model');
-  const { ROLE_PERMISSIONS } = await import('../../../shared/permissions');
+  const { ROLE_PERMISSIONS } = await import('../../shared/permissions');
   
   // Get full user data including permissions
   const userModel = new UserModel();

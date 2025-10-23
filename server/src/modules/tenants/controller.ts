@@ -1,7 +1,9 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import { TenantModel } from "./model";
-import { insertTenantSchema, tenantSettingsSchema } from "@shared/schema";
+import schema from '../../../shared/schema.js';
+
+const { insertTenantSchema, tenantSettingsSchema } = schema;
 import { BaseController } from "../../utils/base";
 import { AuthenticatedRequest } from "../../types";
 import { ForbiddenError, BadRequestError, NotFoundError } from "../../types";

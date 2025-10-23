@@ -1,14 +1,15 @@
 import ExcelJS from 'exceljs';
-import { 
-  Tenant,
-  TurnoverReportData,
-  ProfitLossReportData,
-  CommissionReportData,
-  ShortfallReportData,
-  ExpensesSummaryData,
-  VendorsListData,
-  RetailersListData
-} from '@shared/schema';
+import schema from '../../../shared/schema.js';
+
+type Tenant = typeof schema.tenants.$inferSelect;
+type TurnoverReportData = typeof schema.TurnoverReportData;
+type ProfitLossReportData = typeof schema.ProfitLossReportData;
+type CommissionReportData = typeof schema.CommissionReportData;
+type ShortfallReportData = typeof schema.ShortfallReportData;
+type ExpensesSummaryData = typeof schema.ExpensesSummaryData;
+type VendorsListData = typeof schema.VendorsListData;
+type RetailersListData = typeof schema.RetailersListData;
+
 import {
   renderTurnoverReportTemplate,
   renderProfitLossReportTemplate,

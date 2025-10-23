@@ -1,23 +1,23 @@
 import PDFDocument from 'pdfkit';
-import { 
-  SalesInvoiceWithDetails, 
-  InvoiceWithItems, 
-  Tenant, 
-  TenantSettings, 
-  Payment,
-  SalesPayment,
-  Retailer,
-  Vendor,
-  SalesInvoiceItem,
-  InvoiceItem,
-  TurnoverReportData,
-  ProfitLossReportData,
-  CommissionReportData,
-  ShortfallReportData,
-  ExpensesSummaryData,
-  VendorsListData,
-  RetailersListData
-} from '@shared/schema';
+  import schema from '../../../shared/schema.js';
+
+  type SalesInvoiceWithDetails = typeof schema.SalesInvoiceWithDetails;
+  type InvoiceWithItems = typeof schema.InvoiceWithItems;
+  type Tenant = typeof schema.tenants.$inferSelect;
+  type TenantSettings = typeof schema.TenantSettings;
+  type Payment = typeof schema.payments.$inferSelect;
+  type SalesPayment = typeof schema.salesPayments.$inferSelect;
+  type Retailer = typeof schema.retailers.$inferSelect;
+  type Vendor = typeof schema.vendors.$inferSelect;
+  type SalesInvoiceItem = typeof schema.salesInvoiceItems.$inferSelect;
+  type InvoiceItem = typeof schema.invoiceItems.$inferSelect;
+  type TurnoverReportData = typeof schema.TurnoverReportData;
+  type ProfitLossReportData = typeof schema.ProfitLossReportData;
+  type CommissionReportData = typeof schema.CommissionReportData;
+  type ShortfallReportData = typeof schema.ShortfallReportData;
+  type ExpensesSummaryData = typeof schema.ExpensesSummaryData;
+  type VendorsListData = typeof schema.VendorsListData;
+  type RetailersListData = typeof schema.RetailersListData;
 import { 
   formatCurrency, 
   formatDate, 

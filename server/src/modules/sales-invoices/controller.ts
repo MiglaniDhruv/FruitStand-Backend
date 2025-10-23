@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { insertSalesInvoiceSchema, insertSalesInvoiceItemSchema, insertCrateTransactionSchema, INVOICE_STATUS } from '@shared/schema';
+import schema from '../../../shared/schema.js';
+
+const { insertSalesInvoiceSchema, insertSalesInvoiceItemSchema, insertCrateTransactionSchema, INVOICE_STATUS } = schema;
 import { BaseController } from '../../utils/base';
 import { SalesInvoiceModel } from './model';
 import { type AuthenticatedRequest, NotFoundError, ValidationError, BadRequestError, ForbiddenError } from '../../types';

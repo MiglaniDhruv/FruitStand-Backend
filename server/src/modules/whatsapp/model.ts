@@ -1,12 +1,6 @@
 import { eq, desc, and, or, ilike } from "drizzle-orm";
 import { db } from "../../../db";
-import { 
-  whatsappMessages, 
-  type WhatsAppMessage, 
-  type InsertWhatsAppMessage, 
-  type PaginationOptions, 
-  type PaginatedResult 
-} from "@shared/schema";
+import schema from '../../../shared/schema.js';
 import { 
   ensureTenantInsert, 
   withTenant, 
@@ -18,6 +12,13 @@ import {
   getCountWithSearch,
   buildPaginationMetadata
 } from "../../utils/pagination";
+
+const { whatsappMessages } = schema;
+
+type WhatsAppMessage = typeof schema.whatsappMessages.$inferSelect;
+type InsertWhatsAppMessage = typeof schema.insertWhatsAppMessageSchema._input;
+type PaginationOptions = typeof schema.PaginationOptions;
+type PaginatedResult<T> = typeof schema.PaginatedResult<T>;
 
 export class WhatsAppMessageModel {
   /**

@@ -3,7 +3,9 @@ import { z } from "zod";
 import { BaseController } from "../../utils/base";
 import { StockModel } from "./model";
 import { AuthenticatedRequest, ForbiddenError, BadRequestError } from "../../types";
-import { insertStockSchema, insertStockMovementSchema } from "@shared/schema";
+import schema from '../../../shared/schema.js';
+
+const { insertStockSchema, insertStockMovementSchema } = schema;
 
 export class StockController extends BaseController {
   private stockModel: StockModel;

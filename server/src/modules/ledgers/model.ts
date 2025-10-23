@@ -3,7 +3,11 @@ import { db } from '../../../db';
 import { TenantModel } from '../tenants/model';
 import { BankAccountModel } from '../bank-accounts/model';
 import { getStartOfDay, getEndOfDay, isValidDateString } from './dateUtils';
-import { 
+import schema from '../../../shared/schema.js';
+import { withTenant, ensureTenantInsert } from '../../utils/tenant-scope';
+
+// Destructure tables from schema
+const { 
   cashbook, 
   bankbook, 
   bankAccounts,
@@ -13,18 +17,19 @@ import {
   salesPayments, 
   crateTransactions, 
   retailers, 
-  vendors,
-  type CashbookEntry, 
-  type BankbookEntry,
-  type VendorLedgerEntry,
-  type RetailerLedgerEntry,
-  type UdhaaarBookEntry,
-  type CrateLedgerEntry,
-  type BankAccountSummary,
-  type VendorSummary,
-  type RetailerSummary
-} from '@shared/schema';
-import { withTenant, ensureTenantInsert } from '../../utils/tenant-scope';
+  vendors
+} = schema;
+
+// Define types from schema
+type CashbookEntry = typeof schema.cashbook.$inferSelect;
+type BankbookEntry = typeof schema.bankbook.$inferSelect;
+type VendorLedgerEntry = typeof schema.VendorLedgerEntry;
+type RetailerLedgerEntry = typeof schema.RetailerLedgerEntry;
+type UdhaaarBookEntry = typeof schema.UdhaaarBookEntry;
+type CrateLedgerEntry = typeof schema.CrateLedgerEntry;
+type BankAccountSummary = typeof schema.BankAccountSummary;
+type VendorSummary = typeof schema.VendorSummary;
+type RetailerSummary = typeof schema.RetailerSummary;
 
 export class LedgerModel {
   async getCashbook(tenantId: string, fromDate?: string, toDate?: string): Promise<any[]> {

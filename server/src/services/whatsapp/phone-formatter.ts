@@ -1,4 +1,6 @@
-import { phoneNumberSchema } from '@shared/schema';
+import schema from '../../../shared/schema.js';
+
+const { phoneNumberSchema } = schema;
 
 /**
  * Format phone number for WhatsApp using Twilio's format

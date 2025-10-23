@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import { insertCrateTransactionSchema } from '@shared/schema';
+import schema from '../../../shared/schema.js';
+
+const { insertCrateTransactionSchema } = schema;
 import { BaseController } from '../../utils/base';
 import { CrateModel } from './model';
 import { type AuthenticatedRequest, ForbiddenError, BadRequestError } from '../../types';

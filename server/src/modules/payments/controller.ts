@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
 import { BaseController } from '../../utils/base';
 import { PaymentModel } from './model';
-import { insertPaymentSchema } from '@shared/schema';
+import schema from '../../../shared/schema.js';
+
+const { insertPaymentSchema } = schema;
 import { type AuthenticatedRequest, ForbiddenError, BadRequestError, NotFoundError } from '../../types';
 import { whatsAppService } from '../../services/whatsapp/index.js';
 

@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
-import { insertSalesPaymentSchema } from '@shared/schema';
+import schema from '../../../shared/schema.js';
+
+const { insertSalesPaymentSchema } = schema;
 import { BaseController } from '../../utils/base';
 import { SalesPaymentModel } from './model';
 import { type AuthenticatedRequest, ForbiddenError, BadRequestError, NotFoundError, ValidationError } from '../../types';

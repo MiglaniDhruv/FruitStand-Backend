@@ -1,18 +1,21 @@
 import { eq, desc, asc, and, or, ilike, count, inArray, sum } from 'drizzle-orm';
 import { db } from '../../../db';
-import { 
+import schema from '../../../shared/schema.js';
+
+const { 
   retailers, 
   salesInvoices,
   salesInvoiceItems,
   salesPayments,
   crateTransactions,
   stockMovements,
-  whatsappMessages,
-  type Retailer, 
-  type InsertRetailer, 
-  type PaginationOptions, 
-  type PaginatedResult 
-} from '@shared/schema';
+  whatsappMessages
+} = schema;
+
+type Retailer = typeof schema.retailers.$inferSelect;
+type InsertRetailer = typeof schema.insertRetailerSchema._input;
+type PaginationOptions = typeof schema.PaginationOptions;
+type PaginatedResult<T> = typeof schema.PaginatedResult<T>;
 import { normalizePaginationOptions, buildPaginationMetadata, withTenantPagination } from '../../utils/pagination';
 import { withTenant, ensureTenantInsert } from '../../utils/tenant-scope';
 import { ValidationError, AppError, NotFoundError } from '../../types';

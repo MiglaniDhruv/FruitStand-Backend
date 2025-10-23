@@ -1,21 +1,26 @@
 import { eq, asc, and, count, sum, sql, desc, isNull } from 'drizzle-orm';
 import { db } from '../../../db';
-import { 
+import schema from '../../../shared/schema.js';
+import { TenantModel } from '../tenants/model';
+import { withTenant, ensureTenantInsert } from '../../utils/tenant-scope';
+import { applySorting, applySearchFilter, getCountWithSearch, buildPaginationMetadata, withTenantPagination } from '../../utils/pagination';
+import { BadRequestError, NotFoundError } from '../../types';
+
+// Destructure what you need from the default export
+const { 
   bankAccounts, 
   payments,
   salesPayments,
   bankbook,
   cashbook,
-  expenses,
-  type BankAccount, 
-  type InsertBankAccount,
-  type PaginationOptions,
-  type PaginatedResult
-} from '@shared/schema';
-import { TenantModel } from '../tenants/model';
-import { withTenant, ensureTenantInsert } from '../../utils/tenant-scope';
-import { applySorting, applySearchFilter, getCountWithSearch, buildPaginationMetadata, withTenantPagination } from '../../utils/pagination';
-import { BadRequestError, NotFoundError } from '../../types';
+  expenses
+} = schema;
+
+// Define types from the schema
+type BankAccount = typeof schema.bankAccounts.$inferSelect;
+type InsertBankAccount = typeof schema.insertBankAccountSchema._input;
+type PaginationOptions = typeof schema.PaginationOptions;
+type PaginatedResult<T> = typeof schema.PaginatedResult<T>;
 
 export class BankAccountModel {
   async getBankAccounts(tenantId: string): Promise<BankAccount[]> {

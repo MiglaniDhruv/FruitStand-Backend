@@ -1,17 +1,20 @@
 import { eq, desc, asc, and, or, count, ilike, lte, inArray, isNull, ne } from "drizzle-orm";
-import { 
+import schema from '../../../shared/schema.js';
+
+const { 
   stock,
   stockMovements,
   items,
-  vendors,
-  type Stock, 
-  type InsertStock,
-  type StockMovement,
-  type InsertStockMovement,
-  type StockWithItem,
-  type PaginationOptions,
-  type PaginatedResult
-} from "@shared/schema";
+  vendors
+} = schema;
+
+type Stock = typeof schema.stock.$inferSelect;
+type InsertStock = typeof schema.insertStockSchema._input;
+type StockMovement = typeof schema.stockMovements.$inferSelect;
+type InsertStockMovement = typeof schema.insertStockMovementSchema._input;
+type StockWithItem = typeof schema.StockWithItem;
+type PaginationOptions = typeof schema.PaginationOptions;
+type PaginatedResult<T> = typeof schema.PaginatedResult<T>;
 import { db } from "../../../db";
 import {
   normalizePaginationOptions,

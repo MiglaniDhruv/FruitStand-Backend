@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import { eq, asc } from "drizzle-orm";
 import { db } from "../../../db";
-import { users, type User, type InsertUser, type PaginationOptions, type PaginatedResult } from "@shared/schema";
+import schema from '../../../shared/schema.js';
 import { 
   applySorting,
   applySearchFilter,
@@ -11,6 +11,12 @@ import {
   withTenantPagination
 } from "../../utils/pagination";
 import { withTenant, ensureTenantInsert } from "../../utils/tenant-scope";
+
+const { users } = schema;
+type User = typeof schema.users.$inferSelect;
+type InsertUser = typeof schema.insertUserSchema._input;
+type PaginationOptions = typeof schema.PaginationOptions;
+type PaginatedResult<T> = typeof schema.PaginatedResult<T>;
 
 export class UserModel {
   async getUsers(tenantId: string): Promise<User[]> {
