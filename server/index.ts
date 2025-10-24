@@ -169,12 +169,18 @@ app.use(sanitizeInputs);
 // Apply database health middleware
 app.use(asyncHandler(databaseHealthMiddleware));
 
-// Sanitize common param names
-app.param('id', (req, _res, next, val) => { (req as any).params.id = sanitizeParam(val); next(); });
-app.param('slug', (req, _res, next, val) => { (req as any).params.slug = sanitizeParam(val); next(); });
+// Sanitize common param names - Fixed type annotations
+app.param('id', (req: Request, _res: Response, next: NextFunction, val: string) => { 
+  (req as any).params.id = sanitizeParam(val); 
+  next(); 
+});
+app.param('slug', (req: Request, _res: Response, next: NextFunction, val: string) => { 
+  (req as any).params.slug = sanitizeParam(val); 
+  next(); 
+});
 
-// Logging middleware
-app.use((req, res, next) => {
+// Logging middleware - Fixed type annotations
+app.use((req: Request, res: Response, next: NextFunction) => {
   const start = Date.now();
   const path = req.path;
 
@@ -201,9 +207,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// URL normalization middleware - strip /:slug from paths matching /:slug/api/*
-// Runs before all app.use('/api', ...) calls to ensure proper routing
-app.use((req, res, next) => {
+// URL normalization middleware - Fixed type annotations
+app.use((req: Request, res: Response, next: NextFunction) => {
   const path = req.path;
   
   // System routes that shouldn't be processed - skip normalization

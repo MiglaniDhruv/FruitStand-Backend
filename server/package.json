@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "nodemon --watch . --ext ts --exec \"tsx index.ts\"",
     "build": "tsc --project tsconfig.json  --noEmitOnError false",
-    "start": "NODE_ENV=production node dist/index.js",
+    "start": "node dist/src/index.js",
     "db:push": "drizzle-kit push",
     "db:init": "tsx server/initializeDatabase.ts",
     "seed:tenants": "tsx server/seedTenantData.ts",
@@ -43,6 +43,10 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.4",
+    "@types/express-session": "^1.18.2",
+    "@types/node": "^24.9.1",
     "nodemon": "^3.1.10",
     "tsx": "^4.19.1",
     "typescript": "5.6.3"
