@@ -235,9 +235,7 @@ async function createTenant(config: typeof TENANT_CONFIGS[0]) {
   // Insert tenant
   const [tenant] = await db.insert(tenants).values({
     name: config.name,
-    slug: config.slug,
-    settings: config.settings,
-    isActive: true
+    slug: config.slug
   }).returning({ id: tenants.id });
 
   // Create cashbook opening entry if cashBalance is set
@@ -929,7 +927,7 @@ async function seedTenantData() {
 }
 
 // Run the seeding if this script is executed directly
-if (import.meta.url.endsWith(process.argv[1])) {
+if (require.main === module) {
   seedTenantData()
     .then(() => process.exit(0))
     .catch((error) => {
