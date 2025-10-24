@@ -149,27 +149,25 @@ app.use(session({
 }));
 
 
-// Allow frontend requests
+
 app.use(cors({
-  origin: 'http://localhost:5173', // frontend URL
-  credentials: true,               // allow cookies/sessions
+  origin: [
+    'http://localhost:5173',  
+    'https://fruit-stand-frontend.vercel.app/'  
+  ],
+  credentials: true,
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Apply request ID tracking first for tracing
 app.use(attachRequestId);
 
-// Apply timeout protection
 app.use(requestTimeout());
 
-// Apply input sanitization (after body parsing, before business logic)
 app.use(sanitizeInputs);
 
-// Apply database health middleware
 app.use(asyncHandler(databaseHealthMiddleware));
 
-// Sanitize common param names - Fixed type annotations
 app.param('id', (req: Request, _res: Response, next: NextFunction, val: string) => { 
   (req as any).params.id = sanitizeParam(val); 
   next(); 
@@ -179,7 +177,6 @@ app.param('slug', (req: Request, _res: Response, next: NextFunction, val: string
   next(); 
 });
 
-// Logging middleware - Fixed type annotations
 app.use((req: Request, res: Response, next: NextFunction) => {
   const start = Date.now();
   const path = req.path;
