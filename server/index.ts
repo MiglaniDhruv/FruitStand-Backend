@@ -158,13 +158,13 @@ app.use(cors({
   credentials: true,
 }));
 
-app.get("/", (req, res) => {
-  res.redirect("https://fruit-stand-frontend.vercel.app/pune-fresh/login");
-});
-
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+app.get("/", (req, res) => {
+  res.redirect("https://fruit-stand-frontend.vercel.app/pune-fresh/login");
+});
 
 app.use(attachRequestId);
 
