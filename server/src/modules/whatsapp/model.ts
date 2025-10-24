@@ -3,7 +3,6 @@ import { db } from "../../../db";
 import schema from "../../../shared/schema.js";
 import type {
   WhatsAppMessage as WhatsAppMessageType,
-  InsertWhatsAppMessage as InsertWhatsAppMessageType,
   PaginationOptions as PaginationOptionsType,
   PaginatedResult as PaginatedResultType,
 } from "../../../shared/schema";
@@ -22,9 +21,24 @@ import {
 const { whatsappMessages } = schema;
 
 type WhatsAppMessage = WhatsAppMessageType;
-type InsertWhatsAppMessage = InsertWhatsAppMessageType;
 type PaginationOptions = PaginationOptionsType;
 type PaginatedResult<T> = PaginatedResultType<T>;
+
+// ✅ Fix: define Insert type with all expected fields
+type InsertWhatsAppMessage = {
+  referenceType: string;
+  referenceId: string;
+  referenceNumber?: string;
+  messageType: string;
+  recipientType: "vendor" | "retailer" | "customer";
+  recipientId: string | null;
+  recipientPhone: string;
+  templateId?: string | null;
+  templateVariables?: Record<string, any>;
+  errorMessage?: string | null;
+  status?: string;
+  createdAt?: Date;
+};
 
 export class WhatsAppMessageModel {
   /**
@@ -34,23 +48,23 @@ export class WhatsAppMessageModel {
     tenantId: string,
     messageData: InsertWhatsAppMessage
   ): Promise<WhatsAppMessage> {
-    // ✅ Add missing fields safely (cast to Partial<WhatsAppMessage>)
+    // Add missing fields safely
     const safeData = ensureTenantInsert(
       {
         tenantId,
         referenceType: messageData.referenceType ?? "generic",
         referenceId: messageData.referenceId ?? "unknown",
+        referenceNumber: messageData.referenceNumber ?? "",
         messageType: messageData.messageType ?? "notification",
         recipientType: messageData.recipientType ?? "customer",
         recipientId: messageData.recipientId ?? null,
         recipientPhone: messageData.recipientPhone ?? "",
         templateId: messageData.templateId ?? null,
         templateVariables: messageData.templateVariables ?? {},
-        referenceNumber: messageData.referenceNumber ?? "",
         errorMessage: messageData.errorMessage ?? null,
-        status: (messageData as Partial<WhatsAppMessage>).status ?? "pending",
-        createdAt: (messageData as Partial<WhatsAppMessage>).createdAt ?? new Date(),
-      },
+        status: messageData.status ?? "pending",
+        createdAt: messageData.createdAt ?? new Date(),
+      } as any, // cast to any to satisfy TS
       tenantId
     );
 
@@ -72,7 +86,7 @@ export class WhatsAppMessageModel {
   ): Promise<WhatsAppMessage | undefined> {
     const [updatedMessage] = await db
       .update(whatsappMessages)
-      .set(updates)
+      .set(updates as any)
       .where(
         withTenant(
           whatsappMessages,

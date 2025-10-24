@@ -37,6 +37,7 @@ export interface BankAccount1 {
 }
 
 // Authenticated request with generics for Express
+
 export interface AuthenticatedRequest<
   P = any,
   ResBody = any,
@@ -49,6 +50,7 @@ export interface AuthenticatedRequest<
   requestId?: string;
   slugProvided?: boolean;
 }
+
 
 // Common API response structures
 export interface ApiResponse<T = any> {

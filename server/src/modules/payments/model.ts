@@ -1,4 +1,4 @@
-import { eq, desc, inArray, and, or, gt, asc } from 'drizzle-orm';
+import { eq, desc, inArray, and, or, gt, asc, sql } from 'drizzle-orm';
 import { db } from '../../../db';
 import schema from '../../../shared/schema.js';
 
@@ -48,85 +48,107 @@ import { NotFoundError, ValidationError, AppError } from '../../types';
 import { handleDatabaseError } from '../../utils/database-errors';
 
 export class PaymentModel {
-  async getPayments(tenantId: string): Promise<PaymentWithDetails[]> {
-    const paymentsList = await db.select().from(payments)
-      .where(withTenant(payments, tenantId))
-      .orderBy(desc(payments.createdAt));
+async getPayments(tenantId: string): Promise<PaymentWithDetails[]> {
+  const paymentsList = await db.select().from(payments)
+    .where(withTenant(payments, tenantId))
+    .orderBy(desc(payments.createdAt));
 
-    if (!paymentsList.length) return [];
+  if (!paymentsList.length) return [];
 
-    const invoiceIds = Array.from(new Set(paymentsList.map(p => p.invoiceId)));
-    const vendorIds = Array.from(new Set(paymentsList.map(p => p.vendorId)));
-    const bankAccountIds = Array.from(new Set(paymentsList.filter(p => p.bankAccountId).map(p => p.bankAccountId!)));
+  const invoiceIds = Array.from(new Set(paymentsList.map(p => p.invoiceId)));
+  const vendorIds = Array.from(new Set(paymentsList.map(p => p.vendorId)));
+  const bankAccountIds = Array.from(new Set(paymentsList.filter(p => p.bankAccountId).map(p => p.bankAccountId!)));
 
-    const [invoicesData, vendorsData, bankAccountsData] = await Promise.all([
-      invoiceIds.length
-        ? db.select().from(purchaseInvoices).where(withTenant(purchaseInvoices, tenantId, inArray(purchaseInvoices.id, invoiceIds)))
-        : [],
-      vendorIds.length
-        ? db.select().from(vendors).where(withTenant(vendors, tenantId, inArray(vendors.id, vendorIds)))
-        : [],
-      bankAccountIds.length
-        ? db.select().from(bankAccounts).where(withTenant(bankAccounts, tenantId, inArray(bankAccounts.id, bankAccountIds)))
-        : []
-    ]);
+  const [invoicesData, vendorsData, bankAccountsData] = await Promise.all([
+    invoiceIds.length
+      ? db.select().from(purchaseInvoices).where(withTenant(purchaseInvoices, tenantId, inArray(purchaseInvoices.id, invoiceIds)))
+      : [],
+    vendorIds.length
+      ? db.select().from(vendors).where(withTenant(vendors, tenantId, inArray(vendors.id, vendorIds)))
+      : [],
+    bankAccountIds.length
+      ? db.select().from(bankAccounts).where(withTenant(bankAccounts, tenantId, inArray(bankAccounts.id, bankAccountIds)))
+      : []
+  ]);
 
-    const invoiceMap = new Map<string, PurchaseInvoice>(invoicesData.map(i => [i.id, i] as [string, PurchaseInvoice]));
-    const vendorMap = new Map<string, Vendor>(vendorsData.map(v => [v.id, v] as [string, Vendor]));
-    const bankAccountMap = new Map<string, BankAccount>(bankAccountsData.map(b => [b.id, b] as [string, BankAccount]));
+  // Type-safe Map creation
+  const invoiceMap = new Map<string, PurchaseInvoice>(
+    invoicesData.map(i => [i.id, i] as [string, PurchaseInvoice])
+  );
+  const vendorMap = new Map<string, Vendor>(
+    vendorsData.map(v => [v.id, v] as [string, Vendor])
+  );
+  const bankAccountMap = new Map<string, BankAccount>(
+    bankAccountsData.map(b => [b.id, b] as [string, BankAccount])
+  );
 
-    return paymentsList
-      .map(payment => {
-        const invoice = invoiceMap.get(payment.invoiceId);
-        const vendor = vendorMap.get(payment.vendorId);
-        if (!invoice || !vendor) return null;
+  return paymentsList
+    .map(payment => {
+      const invoice = invoiceMap.get(payment.invoiceId);
+      const vendor = vendorMap.get(payment.vendorId);
+      if (!invoice || !vendor) return null;
 
-        return {
-          ...payment,
-          invoice,
-          vendor,
-          bankAccount: payment.bankAccountId ? bankAccountMap.get(payment.bankAccountId) : undefined
-        };
-      })
-      .filter((p): p is PaymentWithDetails => p !== null);
-  }
+      return {
+        ...payment,
+        invoice,
+        vendor,
+        // keep bankAccount optional
+        bankAccount: payment.bankAccountId ? bankAccountMap.get(payment.bankAccountId) : undefined
+      } as PaymentWithDetails;
+    })
+    // Fix TS2677: type predicate matches PaymentWithDetails
+    .filter((p): p is PaymentWithDetails => p !== null && p.invoice !== undefined && p.vendor !== undefined);
+}
 
-  async getPaymentsByInvoice(tenantId: string, invoiceId: string): Promise<PaymentWithDetails[]> {
-    const paymentsList = await db.select().from(payments)
-      .where(withTenant(payments, tenantId, eq(payments.invoiceId, invoiceId)))
-      .orderBy(desc(payments.createdAt));
+async getPaymentsByInvoice(tenantId: string, invoiceId: string): Promise<PaymentWithDetails[]> {
+  const paymentsList = await db.select().from(payments)
+    .where(withTenant(payments, tenantId, eq(payments.invoiceId, invoiceId)))
+    .orderBy(desc(payments.createdAt));
 
-    if (!paymentsList.length) return [];
+  if (!paymentsList.length) return [];
 
-    const invoiceIds = Array.from(new Set(paymentsList.map(p => p.invoiceId)));
-    const vendorIds = Array.from(new Set(paymentsList.map(p => p.vendorId)));
-    const bankAccountIds = Array.from(new Set(paymentsList.filter(p => p.bankAccountId).map(p => p.bankAccountId!)));
+  const invoiceIds = Array.from(new Set(paymentsList.map(p => p.invoiceId)));
+  const vendorIds = Array.from(new Set(paymentsList.map(p => p.vendorId)));
+  const bankAccountIds = Array.from(new Set(paymentsList.filter(p => p.bankAccountId).map(p => p.bankAccountId!)));
 
-    const [invoicesData, vendorsData, bankAccountsData] = await Promise.all([
-      invoiceIds.length ? db.select().from(purchaseInvoices).where(withTenant(purchaseInvoices, tenantId, inArray(purchaseInvoices.id, invoiceIds))) : [],
-      vendorIds.length ? db.select().from(vendors).where(withTenant(vendors, tenantId, inArray(vendors.id, vendorIds))) : [],
-      bankAccountIds.length ? db.select().from(bankAccounts).where(withTenant(bankAccounts, tenantId, inArray(bankAccounts.id, bankAccountIds))) : []
-    ]);
+  const [invoicesData, vendorsData, bankAccountsData] = await Promise.all([
+    invoiceIds.length
+      ? db.select().from(purchaseInvoices).where(withTenant(purchaseInvoices, tenantId, inArray(purchaseInvoices.id, invoiceIds)))
+      : [],
+    vendorIds.length
+      ? db.select().from(vendors).where(withTenant(vendors, tenantId, inArray(vendors.id, vendorIds)))
+      : [],
+    bankAccountIds.length
+      ? db.select().from(bankAccounts).where(withTenant(bankAccounts, tenantId, inArray(bankAccounts.id, bankAccountIds)))
+      : []
+  ]);
 
-    const invoiceMap = new Map<string, PurchaseInvoice>(invoicesData.map(i => [i.id, i] as [string, PurchaseInvoice]));
-    const vendorMap = new Map<string, Vendor>(vendorsData.map(v => [v.id, v] as [string, Vendor]));
-    const bankAccountMap = new Map<string, BankAccount>(bankAccountsData.map(b => [b.id, b] as [string, BankAccount]));
+  const invoiceMap = new Map<string, PurchaseInvoice>(
+    invoicesData.map(i => [i.id, i] as [string, PurchaseInvoice])
+  );
+  const vendorMap = new Map<string, Vendor>(
+    vendorsData.map(v => [v.id, v] as [string, Vendor])
+  );
+  const bankAccountMap = new Map<string, BankAccount>(
+    bankAccountsData.map(b => [b.id, b] as [string, BankAccount])
+  );
 
-    return paymentsList
-      .map(payment => {
-        const invoice = invoiceMap.get(payment.invoiceId);
-        const vendor = vendorMap.get(payment.vendorId);
-        if (!invoice || !vendor) return null;
+  return paymentsList
+    .map(payment => {
+      const invoice = invoiceMap.get(payment.invoiceId);
+      const vendor = vendorMap.get(payment.vendorId);
+      if (!invoice || !vendor) return null;
 
-        return {
-          ...payment,
-          invoice,
-          vendor,
-          bankAccount: payment.bankAccountId ? bankAccountMap.get(payment.bankAccountId) : undefined
-        };
-      })
-      .filter((p): p is PaymentWithDetails => p !== null);
-  }
+      return {
+        ...payment,
+        invoice,
+        vendor,
+        bankAccount: payment.bankAccountId ? bankAccountMap.get(payment.bankAccountId) : undefined
+      } as PaymentWithDetails;
+    })
+    .filter((p): p is PaymentWithDetails => p !== null && p.invoice !== undefined && p.vendor !== undefined);
+}
+
 
   async createPayment(tenantId: string, paymentData: InsertPayment): Promise<PaymentWithDetails> {
     const paymentAmount = parseFloat(paymentData.amount);
@@ -142,7 +164,12 @@ export class PaymentModel {
 
     try {
       return await db.transaction(async (tx) => {
-        const paymentWithTenant = ensureTenantInsert(paymentData, tenantId);
+        const paymentWithTenant = ensureTenantInsert({
+          ...paymentData,
+          paymentDate: typeof paymentData.paymentDate === 'string' 
+            ? new Date(paymentData.paymentDate) 
+            : paymentData.paymentDate
+        }, tenantId);
         const [payment] = await tx.insert(payments).values(paymentWithTenant).returning();
 
         const [invoice] = await tx.select().from(purchaseInvoices)
@@ -176,7 +203,7 @@ export class PaymentModel {
         const newVendorBalance = currentVendorBalance - appliedAmount;
 
         await tx.update(vendors)
-          .set({ balance: newVendorBalance.toFixed(2) })
+          .set({ balance: newVendorBalance.toFixed(2) } as any)
           .where(withTenant(vendors, tenantId, eq(vendors.id, payment.vendorId)));
 
         // Cash/Bank entries
@@ -286,7 +313,9 @@ export class PaymentModel {
             vendorId,
             amount: allocation.toFixed(2),
             paymentMode: paymentData.paymentMode,
-            paymentDate: paymentData.paymentDate,
+            paymentDate: typeof paymentData.paymentDate === 'string'
+              ? new Date(paymentData.paymentDate)
+              : paymentData.paymentDate,
             bankAccountId: paymentData.bankAccountId,
             chequeNumber: paymentData.chequeNumber,
             upiReference: paymentData.upiReference,
@@ -314,7 +343,7 @@ export class PaymentModel {
 
         const newVendorBalance = parseFloat(vendor[0].balance || '0') - (distributedAmount - remainingPaymentAmount);
         await tx.update(vendors)
-          .set({ balance: newVendorBalance.toFixed(2) })
+          .set({ balance: newVendorBalance.toFixed(2) } as any)
           .where(withTenant(vendors, tenantId, eq(vendors.id, vendorId)));
 
         // Cash/Bankbook entries
@@ -329,7 +358,9 @@ export class PaymentModel {
             const newBalance = currentBalance - netPayment;
 
             await tx.insert(cashbook).values(ensureTenantInsert({
-              date: paymentData.paymentDate,
+              date: typeof paymentData.paymentDate === 'string'
+                ? new Date(paymentData.paymentDate)
+                : paymentData.paymentDate,
               description: `Vendor Payment - ${vendor[0].name}`,
               outflow: netPayment.toFixed(2),
               inflow: '0.00',
@@ -348,7 +379,9 @@ export class PaymentModel {
 
             await tx.insert(bankbook).values(ensureTenantInsert({
               bankAccountId: paymentData.bankAccountId,
-              date: paymentData.paymentDate,
+              date: typeof paymentData.paymentDate === 'string'
+                ? new Date(paymentData.paymentDate)
+                : paymentData.paymentDate,
               description: `Vendor Payment - ${vendor[0].name}`,
               credit: netPayment.toFixed(2),
               debit: '0.00',
@@ -495,11 +528,11 @@ export class PaymentModel {
             
             // Update the affected invoice
             await tx.update(purchaseInvoices)
-              .set({
-                paidAmount: newPaidAmount.toFixed(2),
-                balanceAmount: Math.max(0, newBalanceAmount).toFixed(2),
-                status: newStatus as any
-              })
+  .set({
+    paidAmount: newPaidAmount.toFixed(2),
+    balanceAmount: Math.max(0, newBalanceAmount).toFixed(2),
+    status: newStatus as any
+  }as any)
               .where(withTenant(purchaseInvoices, tenantId, eq(purchaseInvoices.id, affectedInvoiceId)));
           }
         }
@@ -528,11 +561,11 @@ export class PaymentModel {
 
         // Update the invoice with new amounts and status
         await tx.update(purchaseInvoices)
-          .set({
-            paidAmount: newPaidAmount.toFixed(2),
-            balanceAmount: Math.max(0, newBalanceAmount).toFixed(2),
-            status: newStatus as any
-          })
+  .set({
+    paidAmount: newPaidAmount.toFixed(2),
+    balanceAmount: Math.max(0, newBalanceAmount).toFixed(2),
+    status: newStatus as any
+  }as any)
           .where(withTenant(purchaseInvoices, tenantId, eq(purchaseInvoices.id, invoiceId)));
       }
 
@@ -562,9 +595,9 @@ export class PaymentModel {
       
       const newVendorBalance = parseFloat(vendor.balance || '0') + appliedAmount;
       await tx.update(vendors)
-        .set({
-          balance: newVendorBalance.toFixed(2)
-        })
+  .set({
+    balance: newVendorBalance.toFixed(2)
+  } as any)
         .where(withTenant(vendors, tenantId, eq(vendors.id, vendorId)));
 
       // Comment 1: Delete ledger entry for batch (single entry references first payment)

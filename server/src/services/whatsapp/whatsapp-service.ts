@@ -136,7 +136,7 @@ export class WhatsAppService {
       referenceNumber,
       templateId: templateContentSid,
       templateVariables: JSON.stringify(templateVariables)
-    });
+    }as any);
 
     try {
       // Step 5: Call Twilio API

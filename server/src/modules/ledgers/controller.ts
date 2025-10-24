@@ -94,7 +94,7 @@ export class LedgerController extends BaseController {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
-    const validatedQuery = ledgerValidation.getCashbook.parse(req.query);
+    const validatedQuery = ledgerValidation.getCashbook.parse((req as any).query);
     const { fromDate, toDate } = validatedQuery;
     
     const cashbook = await this.ledgerModel.getCashbook(tenantId, fromDate, toDate);
@@ -105,7 +105,7 @@ export class LedgerController extends BaseController {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
-    const validatedQuery = ledgerValidation.getBankbook.parse(req.query);
+    const validatedQuery = ledgerValidation.getBankbook.parse((req as any).query);
     const { bankAccountId, fromDate, toDate } = validatedQuery;
     
     // If bankAccountId is provided, return individual transactions
@@ -123,7 +123,7 @@ export class LedgerController extends BaseController {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
-    const validatedQuery = ledgerValidation.getVendorLedger.parse(req.query);
+    const validatedQuery = ledgerValidation.getVendorLedger.parse((req as any).query);
     const { vendorId, fromDate, toDate } = validatedQuery;
     
     if (vendorId) {
@@ -145,7 +145,7 @@ export class LedgerController extends BaseController {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
-    const validatedQuery = ledgerValidation.getRetailerLedger.parse(req.query);
+    const validatedQuery = ledgerValidation.getRetailerLedger.parse((req as any).query);
     const { retailerId, fromDate, toDate } = validatedQuery;
     
     if (retailerId) {
@@ -175,7 +175,7 @@ export class LedgerController extends BaseController {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
-    const validatedQuery = ledgerValidation.getCrateLedger.parse(req.query);
+    const validatedQuery = ledgerValidation.getCrateLedger.parse((req as any).query);
     const { retailerId, fromDate, toDate } = validatedQuery;
     
     // If retailerId is provided, validate UUID format and existence

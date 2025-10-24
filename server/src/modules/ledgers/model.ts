@@ -20,16 +20,98 @@ const {
   vendors
 } = schema;
 
-// Define types from schema
-type CashbookEntry = typeof schema.cashbook.$inferSelect;
-type BankbookEntry = typeof schema.bankbook.$inferSelect;
-type VendorLedgerEntry = typeof schema.VendorLedgerEntry;
-type RetailerLedgerEntry = typeof schema.RetailerLedgerEntry;
-type UdhaaarBookEntry = typeof schema.UdhaaarBookEntry;
-type CrateLedgerEntry = typeof schema.CrateLedgerEntry;
-type BankAccountSummary = typeof schema.BankAccountSummary;
-type VendorSummary = typeof schema.VendorSummary;
-type RetailerSummary = typeof schema.RetailerSummary;
+// Define types from tables
+export type CashbookEntry = typeof cashbook.$inferSelect;
+export type BankbookEntry = typeof bankbook.$inferSelect;
+export type VendorLedgerEntry = {
+  tenantId: string;
+  date: Date;
+  description: string;
+  referenceType: string;
+  referenceId: string;
+  debit: number;
+  credit: number;
+  balance: string;
+  invoiceNumber?: string;
+  status?: string;
+  paymentMode?: string;
+  notes?: string;
+  createdAt: Date;
+};
+
+export type RetailerLedgerEntry = {
+  tenantId: string;
+  date: Date;
+  description: string;
+  referenceType: string;
+  referenceId: string;
+  debit: number;
+  credit: number;
+  balance: string;
+  invoiceNumber?: string;
+  status?: string;
+  paymentMode?: string;
+  notes?: string;
+  createdAt: Date;
+};
+
+export type UdhaaarBookEntry = {
+  tenantId: string;
+  retailerId: string;
+  retailerName: string;
+  phone: string;
+  address: string;
+  udhaarBalance: number;
+  udhaaarBalance: number;
+  totalBalance: number;
+  shortfallBalance: number;
+  crateBalance: string | number;
+  isActive: boolean;
+  createdAt: Date;
+};
+
+export type CrateLedgerEntry = typeof crateTransactions.$inferSelect & {
+  retailerName: string;
+  phone: string;
+  runningBalance: number;
+};
+
+export type BankAccountSummary = {
+  bankAccountId: string;
+  bankName: string;
+  accountNumber: string;
+  accountHolderName: string;
+  totalDebits: number;
+  totalCredits: number;
+  currentBalance: string;
+  transactionCount: number;
+};
+
+export type VendorSummary = {
+  vendorId: string;
+  vendorName: string;
+  phone: string;
+  address: string;
+  totalInvoices: number;
+  totalPayments: number;
+  currentBalance: string;
+  invoiceCount: number;
+  lastInvoiceDate: Date | null;
+};
+
+export type RetailerSummary = {
+  retailerId: string;
+  retailerName: string;
+  phone: string;
+  address: string;
+  totalSales: number;
+  totalPayments: number;
+  udhaaarBalance: string;
+  shortfallBalance: string;
+  invoiceCount: number;
+  lastSaleDate: Date | null;
+};
+
 
 export class LedgerModel {
   async getCashbook(tenantId: string, fromDate?: string, toDate?: string): Promise<any[]> {
@@ -570,12 +652,12 @@ export class LedgerModel {
         referenceId: invoice.id,
         debit: Number(invoice.netAmount || '0'),
         credit: 0,
-        balance: 0, // Will be computed after sorting
+        balance: '0', // Will be computed after sorting
         invoiceNumber: invoice.invoiceNumber,
         status: invoice.status,
         createdAt: invoice.createdAt,
         typeOrder: 1 // Transactions
-      });
+      }as any);
     }
 
     // Add payment entries (credit - decreases vendor balance)
@@ -588,31 +670,28 @@ export class LedgerModel {
         referenceId: payment.id,
         debit: 0,
         credit: Number(payment.amount || '0'),
-        balance: 0, // Will be computed after sorting
+        balance: '0', // Will be computed after sorting
         paymentMode: payment.paymentMode,
         notes: payment.notes,
         createdAt: payment.createdAt,
         typeOrder: 1 // Transactions
-      });
+      }as any);
     }
 
     // Sort chronologically with stable tie-breakers
-    allEntries.sort((a, b) => {
-      // First by date
-      const dateCompare = new Date(a.date).getTime() - new Date(b.date).getTime();
-      if (dateCompare !== 0) return dateCompare;
-      
-      // Then by typeOrder
-      const orderA = a.typeOrder ?? 1;
-      const orderB = b.typeOrder ?? 1;
-      if (orderA !== orderB) return orderA - orderB;
-      
-      // Finally by createdAt if available
-      if (a.createdAt && b.createdAt) {
-        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-      }
-      return 0;
-    });
+  allEntries.sort((a, b) => {
+  // Sort by createdAt
+  const dateCompare = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+  if (dateCompare !== 0) return dateCompare;
+  
+  // Then by typeOrder
+  const orderA = a.typeOrder ?? 1;
+  const orderB = b.typeOrder ?? 1;
+  if (orderA !== orderB) return orderA - orderB;
+  
+  return 0;
+});
+
 
     // Build final ledger entries array
     const ledgerEntries: (VendorLedgerEntry & { typeOrder?: number; isBoundary?: boolean })[] = [];
@@ -622,7 +701,7 @@ export class LedgerModel {
       runningBalance += (entry.debit - entry.credit);
       ledgerEntries.push({
         ...entry,
-        balance: runningBalance
+        balance: runningBalance.toFixed(2)
       });
     }
     
@@ -636,11 +715,11 @@ export class LedgerModel {
         referenceId: 'period-opening',
         debit: priorBalance > 0 ? priorBalance : 0,
         credit: priorBalance < 0 ? Math.abs(priorBalance) : 0,
-        balance: priorBalance,
+        balance: priorBalance.toFixed(2),
         createdAt: new Date(),
         typeOrder: -1, // Sort before all transactions
         isBoundary: true
-      });
+      }as any);
     }
     
     if (toDate) {
@@ -652,17 +731,17 @@ export class LedgerModel {
         referenceId: 'period-closing',
         debit: runningBalance > 0 ? runningBalance : 0,
         credit: runningBalance < 0 ? Math.abs(runningBalance) : 0,
-        balance: runningBalance,
+        balance: runningBalance.toFixed(2),
         createdAt: new Date(),
         typeOrder: 3, // Sort after all transactions
         isBoundary: true
-      });
+      }as any);
     }
     
     // Final sort with boundary markers included
     ledgerEntries.sort((a, b) => {
-      const dateA = new Date(a.date).getTime();
-      const dateB = new Date(b.date).getTime();
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
       if (dateA !== dateB) return dateA - dateB;
       
       const orderA = a.typeOrder ?? 1;
@@ -754,12 +833,12 @@ export class LedgerModel {
         referenceId: invoice.id,
         debit: Number(invoice.totalAmount || '0'), // Use totalAmount matching the debit display
         credit: 0,
-        balance: 0, // Will be computed after sorting
+        balance: '0', // Will be computed after sorting
         invoiceNumber: invoice.invoiceNumber,
         status: invoice.status,
         createdAt: invoice.createdAt,
         typeOrder: 1 // Invoice comes first for same date
-      });
+      }as any);
     }
 
     // Add payment entries (credit - decreases retailer balance)
@@ -772,18 +851,18 @@ export class LedgerModel {
         referenceId: payment.id,
         debit: 0,
         credit: Number(payment.amount || '0'),
-        balance: 0, // Will be computed after sorting
+        balance: '0', // Will be computed after sorting
         paymentMode: payment.paymentMode,
         notes: payment.notes,
         createdAt: payment.createdAt,
         typeOrder: 2 // Payment comes after Invoice for same date
-      });
+      }as any);
     }
 
     // Sort chronologically with stable tie-breakers
     allEntries.sort((a, b) => {
       // First by date
-      const dateCompare = new Date(a.date).getTime() - new Date(b.date).getTime();
+      const dateCompare = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
       if (dateCompare !== 0) return dateCompare;
       
       // Then by createdAt if available
@@ -810,7 +889,7 @@ export class LedgerModel {
       
       ledgerEntries.push({
         ...entry,
-        balance: runningBalance
+        balance: runningBalance.toFixed(2)
       });
     }
     
@@ -825,11 +904,11 @@ export class LedgerModel {
         referenceId: 'period-opening-monetary',
         debit: priorBalance > 0 ? priorBalance : 0,
         credit: priorBalance < 0 ? Math.abs(priorBalance) : 0,
-        balance: priorBalance,
+        balance: priorBalance.toFixed(2),
         createdAt: new Date(),
         typeOrder: -1, // Sort before all transactions
         isBoundary: true
-      });
+      }as any);
     }
     
     if (toDate) {
@@ -842,17 +921,17 @@ export class LedgerModel {
         referenceId: 'period-closing-monetary',
         debit: runningBalance > 0 ? runningBalance : 0,
         credit: runningBalance < 0 ? Math.abs(runningBalance) : 0,
-        balance: runningBalance,
+        balance: runningBalance.toFixed(2),
         createdAt: new Date(),
         typeOrder: 3, // Sort after all transactions
         isBoundary: true
-      });
+      }as any);
     }
     
     // Final sort with boundary markers included
     ledgerEntries.sort((a, b) => {
-      const dateA = new Date(a.date).getTime();
-      const dateB = new Date(b.date).getTime();
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
       if (dateA !== dateB) return dateA - dateB;
       
       const orderA = a.typeOrder ?? 1;
@@ -1002,7 +1081,7 @@ export class LedgerModel {
         runningBalance: runningBalance,
         createdAt: transaction.createdAt,
         typeOrder: 1 // Transactions
-      });
+      }as any);
     }
     
     // Add period boundary markers when date filters are provided (regardless of retailerId)
@@ -1022,7 +1101,7 @@ export class LedgerModel {
         createdAt: new Date(),
         typeOrder: -1, // Sort before all transactions
         isBoundary: true
-      });
+      }as any);
     }
     
     if (toDate) {
@@ -1041,7 +1120,7 @@ export class LedgerModel {
         createdAt: new Date(),
         typeOrder: 3, // Sort after all transactions
         isBoundary: true
-      });
+      }as any);
     }
     
     // Final sort with boundary markers included
@@ -1328,12 +1407,12 @@ export class LedgerModel {
       .orderBy(asc(retailers.name));
 
     // Map retailers to summary objects
-    const summaries: RetailerSummary[] = activeRetailers.map(retailer => {
-      const salesInfo = salesMap.get(retailer.id) || {
-        totalSales: 0,
-        invoiceCount: 0,
-        lastSaleDate: null
-      };
+      const summaries: RetailerSummary[] = activeRetailers.map(retailer => {
+        const salesInfo = salesMap.get(retailer.id) || {
+          totalSales: 0,
+          invoiceCount: 0,
+          lastSaleDate: null
+        };
       const totalPayments = paymentMap.get(retailer.id) || 0;
 
       return {

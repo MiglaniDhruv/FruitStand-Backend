@@ -189,7 +189,17 @@ export class SalesInvoiceController extends BaseController {
     
     const result = await this.salesInvoiceModel.getSalesInvoicesPaginated(tenantId, options);
     
-    return this.sendPaginatedResponse(res, result.data, result.pagination);
+    // Ensure pagination metadata has all required fields
+    const paginationMetadata = {
+      page: result.pagination.page ?? 1,
+      limit: result.pagination.limit ?? 10,
+      total: result.pagination.total ?? 0,
+      totalPages: result.pagination.totalPages ?? 0,
+      hasNext: result.pagination.hasNext ?? false,
+      hasPrevious: result.pagination.hasPrevious ?? false
+    };
+    
+    return this.sendPaginatedResponse(res, result.data, paginationMetadata);
   }
 
   async createShareLink(req: AuthenticatedRequest, res: Response) {

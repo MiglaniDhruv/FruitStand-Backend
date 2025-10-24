@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, decimal, integer, timestamp, uuid, boolean, jsonb, unique, index, foreignKey } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, decimal, integer, timestamp, uuid, boolean, jsonb, unique, index, foreignKey, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -64,16 +64,16 @@ export const tenants = pgTable("tenants", {
 });
 
 export const vendors = pgTable("vendors", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  tenantId: uuid("tenant_id").references(() => tenants.id).notNull(),
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: text("tenant_id").notNull(),
   name: text("name").notNull(),
   phone: text("phone"),
   address: text("address"),
-  balance: decimal("balance", { precision: 10, scale: 2 }).default("0.00"),
-  crateBalance: integer("crate_balance").default(0), // Number of crates with vendor
-  isActive: boolean("is_active").default(true),
-  isFavourite: boolean("is_favourite").default(false),
-  createdAt: timestamp("created_at").defaultNow(),
+   balance: numeric("balance", { precision: 12, scale: 2 }).default("0.00").notNull(),
+  crateBalance: numeric("crate_balance", { precision: 12, scale: 2 }).default("0.00").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  isFavourite: boolean("is_favourite").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({
   uniqueNamePerTenant: unique().on(table.tenantId, table.name),
   // Comment 1: Composite unique key for tenant-scoped referential integrity
@@ -307,18 +307,18 @@ export const bankbook = pgTable("bankbook", {
 }));
 
 export const retailers = pgTable("retailers", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  tenantId: uuid("tenant_id").references(() => tenants.id).notNull(),
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: text("tenant_id").notNull(),
   name: text("name").notNull(),
   phone: text("phone"),
   address: text("address"),
-  balance: decimal("balance", { precision: 10, scale: 2 }).default("0.00"),
-  udhaaarBalance: decimal("udhaar_balance", { precision: 10, scale: 2 }).default("0.00"), // Credit balance
-  shortfallBalance: decimal("shortfall_balance", { precision: 10, scale: 2 }).default("0.00"), // Deficit balance
-  crateBalance: integer("crate_balance").default(0), // Number of crates with retailer
-  isActive: boolean("is_active").default(true),
-  isFavourite: boolean("is_favourite").default(false),
-  createdAt: timestamp("created_at").defaultNow(),
+   balance: numeric("balance", { precision: 12, scale: 2 }).default("0.00").notNull(),
+  crateBalance: numeric("crate_balance", { precision: 12, scale: 2 }).default("0.00").notNull(),
+  udhaaarBalance: numeric("udhaaar_balance", { precision: 12, scale: 2 }).default("0.00").notNull(),
+  shortfallBalance: numeric("shortfall_balance", { precision: 12, scale: 2 }).default("0.00").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  isFavourite: boolean("is_favourite").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({
   uniqueNamePerTenant: unique().on(table.tenantId, table.name),
   // Comment 1: Composite unique key for tenant-scoped referential integrity
@@ -339,6 +339,7 @@ export const salesInvoices = pgTable("sales_invoices", {
   status: text("status").notNull(), // Paid, Partially Paid, Unpaid
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
+  udhaaarBalance: numeric("udhaaar_balance", { precision: 12, scale: 2 }).default("0.00").notNull(),
 }, (table) => ({
   uniqueInvoiceNumberPerTenant: unique().on(table.tenantId, table.invoiceNumber),
   // Comment 1: Composite unique key for tenant-scoped referential integrity
@@ -669,25 +670,29 @@ export const insertItemSchema = z.object({
   tenantId: z.string().uuid()
 });
 
-export const insertBankAccountSchema = createInsertSchema(bankAccounts, {
-  balance: z.string().transform((val) => {
-    const balanceValue = (val || "0.00").trim();
-    const balanceNum = parseFloat(balanceValue);
-    return balanceNum.toFixed(2);
-  }).refine((val) => {
-    const balanceNum = parseFloat(val);
-    return !isNaN(balanceNum) && balanceNum >= 0;
-  }, "Balance must be a valid non-negative number"),
-  name: z.string().transform(toUpperCase),
-  accountNumber: z.string().transform(toUpperCase),
-  bankName: z.string().transform(toUpperCase),
-  ifscCode: upperOpt(),
-}).extend({
-  openingDate: z.date().optional()
-}).transform((data) => ({
-  ...data,
-  balance: data.balance || "0.00"
-}));
+export const insertBankAccountSchema = createInsertSchema(bankAccounts)
+  .extend({
+    balance: z.string()
+      .transform((val) => {
+        const balanceValue = (val || "0.00").trim();
+        const balanceNum = parseFloat(balanceValue);
+        return balanceNum.toFixed(2);
+      })
+      .refine((val) => {
+        const balanceNum = parseFloat(val);
+        return !isNaN(balanceNum) && balanceNum >= 0;
+      }, "Balance must be a valid non-negative number"),
+    name: z.string().transform(toUpperCase),
+    accountNumber: z.string().transform(toUpperCase),
+    bankName: z.string().transform(toUpperCase),
+    ifscCode: upperOpt(),
+    openingDate: z.date().optional(),
+  })
+  .transform((data) => ({
+    ...data,
+    balance: data.balance || "0.00",
+  }));
+
 
 export const updateBankAccountSchema = createInsertSchema(bankAccounts).extend({
   name: z.string().transform(toUpperCase),
@@ -869,9 +874,8 @@ export type RetailerPaymentDistributionResult = {
 };
 
 
-export const insertCrateTransactionSchema = createInsertSchema(
-  crateTransactions,
-  {
+export const insertCrateTransactionSchema = createInsertSchema(crateTransactions)
+  .extend({
     partyType: z.enum(['retailer', 'vendor'], {
       required_error: "Party type is required",
       invalid_type_error: "Party type must be 'retailer' or 'vendor'",
@@ -896,17 +900,17 @@ export const insertCrateTransactionSchema = createInsertSchema(
     notes: z.string().nullable().optional().transform(toUpperCase),
     retailerId: z.string().optional(),
     vendorId: z.string().optional(),
-  }
-).refine((data) => {
-  // validate IDs based on partyType
-  if (data.partyType === 'retailer' && !data.retailerId) return false;
-  if (data.partyType === 'vendor' && !data.vendorId) return false;
-  if (data.partyType === 'retailer' && data.vendorId) return false;
-  if (data.partyType === 'vendor' && data.retailerId) return false;
-  return true;
-}, {
-  message: "Party ID must match the party type",
-});
+  })
+  .refine((data) => {
+    if (data.partyType === 'retailer' && !data.retailerId) return false;
+    if (data.partyType === 'vendor' && !data.vendorId) return false;
+    if (data.partyType === 'retailer' && data.vendorId) return false;
+    if (data.partyType === 'vendor' && data.retailerId) return false;
+    return true;
+  }, {
+    message: "Party ID must match the party type",
+  });
+
 
 export const insertExpenseCategorySchema = createInsertSchema(expenseCategories).extend({
   name: z.string().transform(toUpperCase),
@@ -924,17 +928,18 @@ export const insertExpenseSchema = createInsertSchema(expenses, {
   notes: upperOpt(),
 });
 
-export const insertWhatsAppMessageSchema = createInsertSchema(whatsappMessages, {
-  sentAt: z.union([z.string(), z.date()]).transform((val) => 
-    typeof val === 'string' ? new Date(val) : val
-  ).optional(),
-  deliveredAt: z.union([z.string(), z.date()]).transform((val) => 
-    typeof val === 'string' ? new Date(val) : val
-  ).optional(),
-}).extend({
-  referenceNumber: z.string().transform(toUpperCase),
-  errorMessage: upperOpt(),
-});
+export const insertWhatsAppMessageSchema = createInsertSchema(whatsappMessages)
+  .extend({
+    sentAt: z.union([z.string(), z.date()])
+      .transform((val) => (typeof val === 'string' ? new Date(val) : val))
+      .optional(),
+    deliveredAt: z.union([z.string(), z.date()])
+      .transform((val) => (typeof val === 'string' ? new Date(val) : val))
+      .optional(),
+    referenceNumber: z.string().transform(toUpperCase),
+    errorMessage: upperOpt(),
+  });
+
 
 export const insertWhatsAppCreditTransactionSchema = createInsertSchema(whatsappCreditTransactions);
 

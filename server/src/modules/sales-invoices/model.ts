@@ -15,6 +15,7 @@ const {
   INVOICE_STATUS 
 } = schema;
 
+
 type SalesInvoice = typeof schema.salesInvoices.$inferSelect;
 type InsertSalesInvoice = typeof schema.insertSalesInvoiceSchema._input;
 type InsertSalesInvoiceItem = typeof schema.insertSalesInvoiceItemSchema._input;
@@ -260,7 +261,7 @@ export class SalesInvoiceModel {
       // Update retailer's udhaaarBalance by the invoice's totalAmount
       const newUdhaaarBalance = parseFloat(retailer.udhaaarBalance || '0') + parseFloat(invoice.totalAmount);
      await tx.update(retailers)
-  .set({     udhaaarBalance: newUdhaaarBalance.toFixed(2)   })
+  .set({     udhaaarBalance: newUdhaaarBalance.toFixed(2)   }as any)
   .where(withTenant(retailers, tenantId, eq(retailers.id, invoice.retailerId)));
 
       // Update retailer object with fresh udhaaar balance
@@ -336,7 +337,7 @@ export class SalesInvoiceModel {
         await tx.update(retailers)
   .set({ 
     udhaaarBalance: newBalanceAfterReversal.toFixed(2) 
-  })
+  }as any)
   .where(and(
     withTenant(retailers, tenantId),
     eq(retailers.id, oldInvoice.retailerId)
@@ -365,7 +366,7 @@ export class SalesInvoiceModel {
             await tx.update(retailers)
   .set({
     crateBalance: sql`COALESCE(${retailers.crateBalance}, 0) + ${netReverse}`
-  })
+  }as any)
   .where(and(
     withTenant(retailers, tenantId),
     eq(retailers.id, oldInvoice.retailerId)
@@ -434,7 +435,7 @@ export class SalesInvoiceModel {
     totalAmount: sql`${(invoiceData as any).totalAmount}`,
     paidAmount: sql`${'0.00'}`,
     shortfallAmount: sql`${'0.00'}`
-  })
+  }as any)
   .where(withTenant(salesInvoices, tenantId, eq(salesInvoices.id, invoiceId)))
   .returning();
         // Phase 7: Create new invoice items
@@ -481,7 +482,7 @@ export class SalesInvoiceModel {
 
         const newUdhaaarBalance = parseFloat(freshRetailer.udhaaarBalance || '0') + parseFloat(updatedInvoice.totalAmount);
         await tx.update(retailers)
-          .set({ udhaaarBalance: newUdhaaarBalance.toFixed(2) })
+          .set({ udhaaarBalance: newUdhaaarBalance.toFixed(2) }as any)
           .where(withTenant(retailers, tenantId, eq(retailers.id, updatedInvoice.retailerId)));
 
         // Update retailer object with fresh udhaaar balance
@@ -514,7 +515,7 @@ export class SalesInvoiceModel {
 // Then update it with salesInvoiceId if needed
 if (crateTransaction) {
   await tx.update(crateTransactions)
-    .set({ salesInvoiceId: invoiceId })
+    .set({ salesInvoiceId: invoiceId }as any)
     .where(eq(crateTransactions.id, crateTransaction.id));
 }
         }
@@ -564,7 +565,7 @@ if (crateTransaction) {
     paidAmount: invoice.totalAmount,
     udhaaarAmount: '0.00',
     shortfallAmount: shortfallAmount.toFixed(2)
-  })
+  }as any)
   .where(withTenant(salesInvoices, tenantId, eq(salesInvoices.id, invoiceId)))
   .returning();
       
@@ -576,8 +577,9 @@ if (crateTransaction) {
   .set({ 
     shortfallBalance: newShortfallBalance.toFixed(2),
     udhaaarBalance: newUdhaaarBalance.toFixed(2)
-  })
-  .where(withTenant(retailers, tenantId, eq(retailers.id, retailer.id)));
+  }as any)
+  .where(withTenant(retailers, tenantId, eq(retailers.id, retailer.id)))
+  .returning();
       
       return {
         invoice: updatedInvoice,
@@ -644,7 +646,7 @@ if (crateTransaction) {
           await tx.update(retailers)
             .set({
               crateBalance: sql`COALESCE(${retailers.crateBalance}, 0) + ${netReverse}`
-            })
+            }as any)
             .where(and(
               withTenant(retailers, tenantId),
               eq(retailers.id, invoice.retailerId)
@@ -732,7 +734,7 @@ if (crateTransaction) {
   .set({ 
     shortfallBalance: newShortfallBalance.toFixed(2),
     udhaaarBalance: newUdhaaarBalance.toFixed(2)
-  })
+  }as any)
   .where(and(
     withTenant(retailers, tenantId),
     eq(retailers.id, retailer.id)
@@ -760,7 +762,7 @@ if (crateTransaction) {
     status?: 'paid' | 'unpaid';
     retailerId?: string;
     dateRange?: { from?: string; to?: string };
-  }): Promise<PaginatedResult<SalesInvoiceWithDetails>> {
+    }): Promise<z.infer<ReturnType<typeof PaginatedResult<typeof schema.SalesInvoiceWithDetails>>>> {
     const { page, limit, offset } = normalizePaginationOptions(options || {});
     
     // Build WHERE conditions array with tenant filtering

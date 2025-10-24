@@ -40,11 +40,14 @@ export class PaymentController extends BaseController {
 
     const validatedData = this.validateZodSchema(insertPaymentSchema, req.body);
 
-    const paymentData = {
+    // Convert paymentDate to Date object if it's a string, preserving all other fields
+    const paymentDate = typeof validatedData.paymentDate === 'string' 
+      ? new Date(validatedData.paymentDate) 
+      : validatedData.paymentDate;
+    
+    const paymentData: any = {
       ...validatedData,
-      paymentDate: typeof validatedData.paymentDate === 'string' 
-        ? new Date(validatedData.paymentDate) 
-        : validatedData.paymentDate
+      paymentDate
     };
 
     const payment = await this.wrapDatabaseOperation(() =>

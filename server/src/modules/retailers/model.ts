@@ -1,4 +1,4 @@
-import { eq, desc, asc, and, or, ilike, count, inArray, sum, sql } from 'drizzle-orm';
+import { eq, desc, asc, and, or, ilike, count, inArray, sum } from 'drizzle-orm';
 import { db } from '../../../db';
 import schema from '../../../shared/schema.js';
 import { z } from 'zod';
@@ -12,26 +12,27 @@ const {
   whatsappMessages
 } = schema;
 
+// Use Drizzle table selection inference for returned rows
 type Retailer = typeof schema.retailers.$inferSelect;
-type InsertRetailer = typeof schema.insertRetailerSchema._input;
-type PaginationOptions = typeof schema.PaginationOptions;
+// Infer InsertRetailer from the zod schema to get accurate required/optional fields
+type InsertRetailer = z.infer<typeof schema.insertRetailerSchema>;
+// If PaginationOptions is a zod schema in shared/schema.js, infer it; otherwise fallback to any.
+type PaginationOptions = z.infer<typeof schema.PaginationOptions>;
 
-export function PaginatedResult<T extends z.ZodTypeAny>(dataSchema: T) {
-  return z.object({
-    data: z.array(dataSchema),
-    pagination: z.object({
-      page: z.number(),
-      limit: z.number(),
-      total: z.number(),
-      totalPages: z.number(),
-      hasNext: z.boolean(),
-      hasPrevious: z.boolean(),
-    }),
-  });
-}
+// Use a plain TypeScript generic for the paginated result (no Zod here)
+export type PaginatedResult<T> = {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrevious: boolean;
+  };
+};
 
-// Define the paginated retailer type
-type PaginatedRetailers = z.infer<ReturnType<typeof PaginatedResult<typeof schema.retailers>>>;
+type PaginatedRetailers = PaginatedResult<Retailer>;
 
 import { normalizePaginationOptions, buildPaginationMetadata, withTenantPagination } from '../../utils/pagination';
 import { withTenant, ensureTenantInsert } from '../../utils/tenant-scope';
@@ -66,8 +67,11 @@ export class RetailerModel {
     }
 
     try {
-      const retailerWithTenant = ensureTenantInsert(insertRetailer, tenantId);
-      const [retailer] = await db.insert(retailers).values(retailerWithTenant).returning();
+      // Ensure tenant is attached
+      const retailerWithTenant = ensureTenantInsert(insertRetailer, tenantId) as InsertRetailer & { tenantId: string };
+
+      // Drizzle is strict about required fields on insert; casting here is safe because we've validated above
+      const [retailer] = await db.insert(retailers).values(retailerWithTenant as any).returning();
       return retailer;
     } catch (error) {
       if (error instanceof AppError) throw error;
@@ -110,70 +114,70 @@ export class RetailerModel {
   async deleteRetailer(tenantId: string, id: string): Promise<boolean> {
     try {
       return await db.transaction(async (tx) => {
-      // a. Delete whatsappMessages where recipientType='retailer' and recipientId=id
-      await tx.delete(whatsappMessages)
-        .where(and(
-          withTenant(whatsappMessages, tenantId),
-          eq(whatsappMessages.recipientType, 'retailer'),
-          eq(whatsappMessages.recipientId, id)
-        ));
-
-      // b. Delete salesPayments where retailerId=id
-      await tx.delete(salesPayments)
-        .where(and(
-          withTenant(salesPayments, tenantId),
-          eq(salesPayments.retailerId, id)
-        ));
-
-      // c. Delete salesInvoiceItems - first get all salesInvoices IDs for this retailer
-      const retailerInvoices = await tx.select({ id: salesInvoices.id })
-        .from(salesInvoices)
-        .where(and(
-          withTenant(salesInvoices, tenantId),
-          eq(salesInvoices.retailerId, id)
-        ));
-
-      const invoiceIds = retailerInvoices.map(invoice => invoice.id);
-      
-      if (invoiceIds.length > 0) {
-        await tx.delete(salesInvoiceItems)
+        // a. Delete whatsappMessages where recipientType='retailer' and recipientId=id
+        await tx.delete(whatsappMessages)
           .where(and(
-            withTenant(salesInvoiceItems, tenantId),
-            inArray(salesInvoiceItems.invoiceId, invoiceIds)
+            withTenant(whatsappMessages, tenantId),
+            eq(whatsappMessages.recipientType, 'retailer'),
+            eq(whatsappMessages.recipientId, id)
           ));
-      }
 
-      // d. Delete crateTransactions where retailerId=id
-      await tx.delete(crateTransactions)
-        .where(and(
-          withTenant(crateTransactions, tenantId),
-          eq(crateTransactions.retailerId, id)
-        ));
+        // b. Delete salesPayments where retailerId=id
+        await tx.delete(salesPayments)
+          .where(and(
+            withTenant(salesPayments, tenantId),
+            eq(salesPayments.retailerId, id)
+          ));
 
-      // e. Delete stockMovements where retailerId=id (retailerId is nullable)
-      await tx.delete(stockMovements)
-        .where(and(
-          withTenant(stockMovements, tenantId),
-          eq(stockMovements.retailerId, id)
-        ));
+        // c. Delete salesInvoiceItems - first get all salesInvoices IDs for this retailer
+        const retailerInvoices = await tx.select({ id: salesInvoices.id })
+          .from(salesInvoices)
+          .where(and(
+            withTenant(salesInvoices, tenantId),
+            eq(salesInvoices.retailerId, id)
+          ));
 
-      // f. Delete salesInvoices where retailerId=id
-      await tx.delete(salesInvoices)
-        .where(and(
-          withTenant(salesInvoices, tenantId),
-          eq(salesInvoices.retailerId, id)
-        ));
+        const invoiceIds = retailerInvoices.map(invoice => invoice.id);
+        
+        if (invoiceIds.length > 0) {
+          await tx.delete(salesInvoiceItems)
+            .where(and(
+              withTenant(salesInvoiceItems, tenantId),
+              inArray(salesInvoiceItems.invoiceId, invoiceIds)
+            ));
+        }
 
-      // g. Finally delete the retailer record itself
-      const [deletedRetailer] = await tx.delete(retailers)
-        .where(and(
-          withTenant(retailers, tenantId),
-          eq(retailers.id, id)
-        ))
-        .returning();
+        // d. Delete crateTransactions where retailerId=id
+        await tx.delete(crateTransactions)
+          .where(and(
+            withTenant(crateTransactions, tenantId),
+            eq(crateTransactions.retailerId, id)
+          ));
 
-      return !!deletedRetailer;
-    });
+        // e. Delete stockMovements where retailerId=id (retailerId is nullable)
+        await tx.delete(stockMovements)
+          .where(and(
+            withTenant(stockMovements, tenantId),
+            eq(stockMovements.retailerId, id)
+          ));
+
+        // f. Delete salesInvoices where retailerId=id
+        await tx.delete(salesInvoices)
+          .where(and(
+            withTenant(salesInvoices, tenantId),
+            eq(salesInvoices.retailerId, id)
+          ));
+
+        // g. Finally delete the retailer record itself
+        const [deletedRetailer] = await tx.delete(retailers)
+          .where(and(
+            withTenant(retailers, tenantId),
+            eq(retailers.id, id)
+          ))
+          .returning();
+
+        return !!deletedRetailer;
+      });
     } catch (error) {
       if (error instanceof AppError) throw error;
       handleDatabaseError(error);
@@ -185,15 +189,15 @@ export class RetailerModel {
     status?: string;
   }): Promise<PaginatedRetailers> {
     const { page, limit, offset, tenantCondition } = withTenantPagination(retailers, tenantId, options || {});
-    
+
     // Build WHERE conditions array starting with tenant filtering
     const whereConditions = [tenantCondition];
-    
+
     // Filter by active retailers by default unless status is specified
     if (options?.status !== 'all') {
       whereConditions.push(eq(retailers.isActive, true));
     }
-    
+
     // Handle search across name and phone fields
     if (options?.search) {
       const searchConditions = [
@@ -202,14 +206,14 @@ export class RetailerModel {
       ];
       whereConditions.push(or(...searchConditions)!);
     }
-    
+
     // Combine all conditions including tenant filtering
     const finalWhereCondition = and(...whereConditions)!;
-    
+
     // Apply sorting
     const sortBy = options?.sortBy || 'createdAt';
     const sortOrder = options?.sortOrder || 'desc';
-    
+
     // Build sorting order
     let orderByClause;
     if (sortBy === 'name') {
@@ -219,7 +223,7 @@ export class RetailerModel {
     } else { // default to createdAt
       orderByClause = sortOrder === 'asc' ? asc(retailers.createdAt) : desc(retailers.createdAt);
     }
-    
+
     // Build and execute paginated query with tenant filtering
     const retailersData = await db.select()
       .from(retailers)
@@ -227,14 +231,15 @@ export class RetailerModel {
       .orderBy(orderByClause)
       .limit(limit)
       .offset(offset);
-    
+
     // Get total count with same conditions including tenant filtering
     const [{ count: total }] = await db.select({ count: count() })
       .from(retailers)
       .where(finalWhereCondition);
-    
+
     const pagination = buildPaginationMetadata(page, limit, total);
-    
+
+    // Force the returned shape to our PaginatedRetailers type (buildPaginationMetadata should produce the required fields)
     return { data: retailersData, pagination } as PaginatedRetailers;
   }
 
@@ -249,9 +254,9 @@ export class RetailerModel {
     .where(withTenant(retailers, tenantId, eq(retailers.isActive, true)));
 
     return {
-      totalRetailers: result.totalRetailers,
-      totalUdhaar: result.totalUdhaar || '0.00',
-      totalShortfall: result.totalShortfall || '0.00',
+      totalRetailers: Number(result.totalRetailers) || 0,
+      totalUdhaar: (result.totalUdhaar as any) || '0.00',
+      totalShortfall: (result.totalShortfall as any) || '0.00',
       totalCrates: Number(result.totalCrates) || 0
     };
   }
@@ -274,10 +279,10 @@ export class RetailerModel {
       // Calculate new favourite status
       const newStatus = !currentRetailer.isFavourite;
 
-      // Update the retailer using sql template
+      // Update the retailer using boolean set
       const [updatedRetailer] = await db
         .update(retailers)
-        .set({ isFavourite: sql`${newStatus}` } as any)
+        .set({ isFavourite: newStatus } as any)
         .where(withTenant(retailers, tenantId, eq(retailers.id, id)))
         .returning();
 

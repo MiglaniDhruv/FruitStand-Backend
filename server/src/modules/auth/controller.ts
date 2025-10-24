@@ -6,9 +6,9 @@ import {
   UserRole,
   UnauthorizedError,
   ForbiddenError
-} from "../types";
-import { ERROR_CODES } from "../constants/error-codes";
-import { ROLE_PERMISSIONS } from "../../shared/permissions";
+} from '../../types';
+import { ERROR_CODES } from '../../constants/error-codes';
+import { ROLE_PERMISSIONS } from '../../../shared/permissions';
 
 // -----------------------------
 // JWT Secrets
@@ -24,7 +24,37 @@ export const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "your-refres
 // AuthUser
 // -----------------------------
 export interface AuthUser extends BaseAuthUser {
+  id: string;
+  username: string;
+  role: UserRole;
   tenantId: string;
+  tokenVersion?: number;
+}
+
+
+// Inside src/modules/auth/controller.ts
+
+export class AuthController {
+  // Example methods
+  login(req: Request, res: Response) {
+    res.send("Login logic here");
+  }
+
+  logout(req: Request, res: Response) {
+    res.send("Logout logic here");
+  }
+
+  refreshToken(req: Request, res: Response) {
+    res.send("Refresh token logic here");
+  }
+
+  getCurrentUser(req: Request, res: Response) {
+    res.send("Get current user logic here");
+  }
+
+  switchTenant(req: Request, res: Response) {
+    res.send("Switch tenant logic here");
+  }
 }
 
 // -----------------------------
@@ -41,7 +71,7 @@ export interface AuthenticatedRequest extends Request {
     settings: unknown;
     createdAt: Date;
   };
-  headers: IncomingHttpHeaders; // ✅ explicitly define headers
+  headers: IncomingHttpHeaders;
 }
 
 // -----------------------------
@@ -83,7 +113,7 @@ export const authenticateToken = (
   res: Response,
   next: NextFunction
 ) => {
-  const authHeader = req.headers['authorization']; // ✅ headers now fully recognized
+  const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) throw new UnauthorizedError('Access token required');
@@ -121,7 +151,7 @@ export const requirePermission = (permissions: (keyof typeof ROLE_PERMISSIONS)[]
 ) => {
   if (!req.user) throw new UnauthorizedError('Authentication required');
 
-  const { UserModel } = await import('../modules/users/model');
+  const { UserModel } = await import('../users/model');
   const userModel = new UserModel();
   const user = await userModel.getUserForAuth(req.user.id);
 
@@ -153,7 +183,7 @@ export const validateTenant = async (
 
   if (!req.user?.tenantId) throw new ForbiddenError('No tenant context found');
 
-  const { TenantModel } = await import('../modules/tenants/model');
+  const { TenantModel } = await import('../tenants/model');
   const tenant = await TenantModel.getTenant(req.user.tenantId);
 
   if (!tenant || !tenant.isActive)

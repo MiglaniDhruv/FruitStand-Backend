@@ -41,7 +41,18 @@ export class RetailerController extends BaseController {
       };
 
       const result = await this.retailerModel.getRetailersPaginated(tenantId, options);
-      return this.sendPaginatedResponse(res, result.data, result.pagination);
+
+      // ✅ Ensure all pagination fields are required for TypeScript
+      const pagination = {
+        page: result.pagination.page ?? 1,
+        limit: result.pagination.limit ?? 10,
+        total: result.pagination.total ?? 0,
+        totalPages: result.pagination.totalPages ?? 1,
+        hasNext: result.pagination.hasNext ?? false,
+        hasPrevious: result.pagination.hasPrevious ?? false
+      };
+
+      return this.sendPaginatedResponse(res, result.data, pagination);
     } else {
       const retailers = await this.retailerModel.getRetailers(tenantId);
       res.json(retailers);

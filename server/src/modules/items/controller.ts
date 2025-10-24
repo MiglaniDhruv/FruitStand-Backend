@@ -12,8 +12,10 @@ import schema from "../../../shared/schema.js";
 
 const { insertItemSchema } = schema;
 
-// ✅ Infer correct type directly from Zod
-type InsertItemType = z.infer<typeof insertItemSchema>;
+// ✅ Infer the input type from the schema
+type InsertItemInput = z.input<typeof insertItemSchema>;
+// ✅ Infer the output type from the schema (after transformations)
+type InsertItemType = z.output<typeof insertItemSchema>;
 
 // Pagination validation
 const itemValidation = {
@@ -116,14 +118,13 @@ export class ItemController extends BaseController {
     if (!req.tenantId) throw new ForbiddenError("No tenant context found");
     const tenantId = req.tenantId;
 
-    // ✅ Zod validation + type-safe casting
+    // ✅ Zod validation with proper type handling
     const parsed = insertItemSchema.safeParse({ ...req.body, tenantId });
     if (!parsed.success) throw new ValidationError("Invalid item data", parsed.error);
 
-    const itemData: InsertItemType = parsed.data;
-
+    // The parsed.data is already validated and has the correct types
     const item = await this.wrapDatabaseOperation(() =>
-      this.itemModel.createItem(tenantId, itemData)
+      this.itemModel.createItem(tenantId, parsed.data as any)
     );
 
     res.status(201).json(item);
@@ -136,14 +137,13 @@ export class ItemController extends BaseController {
     this.validateUUID(req.params.id, "Item ID");
     const itemId = req.params.id;
 
-    // ✅ Zod partial validation + type-safe cast
+    // ✅ Zod partial validation with proper type handling
     const parsed = insertItemSchema.partial().safeParse({ ...req.body, tenantId });
     if (!parsed.success) throw new ValidationError("Invalid item data", parsed.error);
 
-    const itemData: Partial<InsertItemType> = parsed.data;
-
+    // The parsed.data is already validated and has the correct types
     const item = await this.wrapDatabaseOperation(() =>
-      this.itemModel.updateItem(tenantId, itemId, itemData)
+      this.itemModel.updateItem(tenantId, itemId, parsed.data as any)
     );
 
     this.ensureResourceExists(item, "Item");

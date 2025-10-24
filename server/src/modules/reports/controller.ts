@@ -2,19 +2,30 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { BaseController } from '../../utils/base';
 import { ReportModel } from './model';
-import { type AuthenticatedRequest, ForbiddenError, BadRequestError, NotFoundError } from '../../types';
+import { AuthenticatedRequest, ForbiddenError, BadRequestError, NotFoundError } from '../../types';
 import schema from '../../../shared/schema.js';
-
-const { reportDateRangeSchema } = schema;
 import { TenantModel } from '../tenants/model';
 import { invoiceGenerator } from '../../services/pdf';
 import { excelGenerator } from '../../services/excel';
 import { PassThrough } from 'stream';
 
+const { reportDateRangeSchema } = schema;
+
 const reportValidation = {
   getVendorsList: z.object({}),
   getRetailersList: z.object({})
 };
+
+// Define query type for date range reports
+type DateRangeQuery = {
+  fromDate?: string;
+  toDate?: string;
+};
+
+// Extend Express Request to include query
+interface RequestWithQuery<Q> extends AuthenticatedRequest<any, any, any, Q> {
+  query: Q;
+}
 
 export class ReportController extends BaseController {
   private reportModel: ReportModel;
@@ -24,17 +35,17 @@ export class ReportController extends BaseController {
     this.reportModel = new ReportModel();
   }
 
-  async getTurnoverReport(req: AuthenticatedRequest, res: Response) {
+  async getTurnoverReport(req: RequestWithQuery<DateRangeQuery>, res: Response) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
-    
+
     const { fromDate, toDate } = reportDateRangeSchema.parse(req.query);
-    
+
     const report = await this.reportModel.getTurnoverReport(tenantId, fromDate, toDate);
     res.json(report);
   }
 
-  async getProfitLossReport(req: AuthenticatedRequest, res: Response) {
+  async getProfitLossReport(req: RequestWithQuery<DateRangeQuery>, res: Response) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
@@ -44,7 +55,7 @@ export class ReportController extends BaseController {
     res.json(report);
   }
 
-  async getCommissionReport(req: AuthenticatedRequest, res: Response) {
+  async getCommissionReport(req: RequestWithQuery<DateRangeQuery>, res: Response) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
@@ -54,7 +65,7 @@ export class ReportController extends BaseController {
     res.json(report);
   }
 
-  async getShortfallReport(req: AuthenticatedRequest, res: Response) {
+  async getShortfallReport(req: RequestWithQuery<DateRangeQuery>, res: Response) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
@@ -64,7 +75,7 @@ export class ReportController extends BaseController {
     res.json(report);
   }
 
-  async getExpensesSummary(req: AuthenticatedRequest, res: Response) {
+  async getExpensesSummary(req: RequestWithQuery<DateRangeQuery>, res: Response) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
@@ -74,7 +85,7 @@ export class ReportController extends BaseController {
     res.json(report);
   }
 
-  async getVendorsList(req: AuthenticatedRequest, res: Response) {
+  async getVendorsList(req: RequestWithQuery<any>, res: Response) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
@@ -84,7 +95,7 @@ export class ReportController extends BaseController {
     res.json(report);
   }
 
-  async getRetailersList(req: AuthenticatedRequest, res: Response) {
+  async getRetailersList(req: RequestWithQuery<any>, res: Response) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
@@ -94,7 +105,7 @@ export class ReportController extends BaseController {
     res.json(report);
   }
 
-  async downloadTurnoverReportPdf(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  async downloadTurnoverReportPdf(req: RequestWithQuery<DateRangeQuery>, res: Response, next: NextFunction) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
@@ -125,7 +136,7 @@ export class ReportController extends BaseController {
     stream.pipe(res);
   }
 
-  async downloadTurnoverReportExcel(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  async downloadTurnoverReportExcel(req: RequestWithQuery<DateRangeQuery>, res: Response, next: NextFunction) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
@@ -151,7 +162,7 @@ export class ReportController extends BaseController {
     res.send(buffer);
   }
 
-  async downloadProfitLossReportPdf(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  async downloadProfitLossReportPdf(req: RequestWithQuery<DateRangeQuery>, res: Response, next: NextFunction) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
@@ -182,7 +193,7 @@ export class ReportController extends BaseController {
     stream.pipe(res);
   }
 
-  async downloadProfitLossReportExcel(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  async downloadProfitLossReportExcel(req: RequestWithQuery<DateRangeQuery>, res: Response, next: NextFunction) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
@@ -208,7 +219,7 @@ export class ReportController extends BaseController {
     res.send(buffer);
   }
 
-  async downloadCommissionReportPdf(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  async downloadCommissionReportPdf(req: RequestWithQuery<DateRangeQuery>, res: Response, next: NextFunction) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
@@ -239,7 +250,7 @@ export class ReportController extends BaseController {
     stream.pipe(res);
   }
 
-  async downloadCommissionReportExcel(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  async downloadCommissionReportExcel(req: RequestWithQuery<DateRangeQuery>, res: Response, next: NextFunction) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
@@ -265,7 +276,7 @@ export class ReportController extends BaseController {
     res.send(buffer);
   }
 
-  async downloadShortfallReportPdf(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  async downloadShortfallReportPdf(req: RequestWithQuery<DateRangeQuery>, res: Response, next: NextFunction) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
 
@@ -291,7 +302,7 @@ export class ReportController extends BaseController {
     stream.pipe(res);
   }
 
-  async downloadShortfallReportExcel(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  async downloadShortfallReportExcel(req: RequestWithQuery<DateRangeQuery>, res: Response, next: NextFunction) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
 
@@ -312,7 +323,7 @@ export class ReportController extends BaseController {
     res.send(buffer);
   }
 
-  async downloadExpensesSummaryPdf(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  async downloadExpensesSummaryPdf(req: RequestWithQuery<DateRangeQuery>, res: Response, next: NextFunction) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
 
@@ -338,7 +349,7 @@ export class ReportController extends BaseController {
     stream.pipe(res);
   }
 
-  async downloadExpensesSummaryExcel(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  async downloadExpensesSummaryExcel(req: RequestWithQuery<DateRangeQuery>, res: Response, next: NextFunction) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
 
@@ -359,7 +370,7 @@ export class ReportController extends BaseController {
     res.send(buffer);
   }
 
-  async downloadVendorsListPdf(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  async downloadVendorsListPdf(req: RequestWithQuery<any>, res: Response, next: NextFunction) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
 
@@ -383,7 +394,7 @@ export class ReportController extends BaseController {
     stream.pipe(res);
   }
 
-  async downloadVendorsListExcel(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  async downloadVendorsListExcel(req: RequestWithQuery<any>, res: Response, next: NextFunction) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
 
@@ -402,7 +413,7 @@ export class ReportController extends BaseController {
     res.send(buffer);
   }
 
-  async downloadRetailersListPdf(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  async downloadRetailersListPdf(req: RequestWithQuery<any>, res: Response, next: NextFunction) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
 
@@ -426,7 +437,7 @@ export class ReportController extends BaseController {
     stream.pipe(res);
   }
 
-  async downloadRetailersListExcel(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  async downloadRetailersListExcel(req: RequestWithQuery<any>, res: Response, next: NextFunction) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
 

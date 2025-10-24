@@ -9,21 +9,34 @@ const {
 
 type Item = typeof schema.items.$inferSelect;
 type InsertItem = typeof schema.insertItemSchema._input;
-type ItemWithVendor = typeof schema.ItemWithVendor;
-type PaginationOptions = typeof schema.PaginationOptions;
-export function PaginatedResult<T extends z.ZodTypeAny>(dataSchema: T) {
-  return z.object({
-    data: z.array(dataSchema),
-    pagination: z.object({
-      page: z.number(),
-      limit: z.number(),
-      total: z.number(),
-      totalPages: z.number(),
-      hasNext: z.boolean(),
-      hasPrevious: z.boolean(),
-    }),
-  });
-}
+type Vendor = typeof schema.vendors.$inferSelect;
+
+// Define ItemWithVendor type locally
+type ItemWithVendor = Item & {
+  vendor: Vendor | null;
+};
+
+type PaginationOptions = {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+};
+
+// Define the PaginatedResult type (not a function)
+type PaginatedResult<T> = {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrevious: boolean;
+  };
+};
+
 import { db } from "../../../db";
 import {
   normalizePaginationOptions,
@@ -109,7 +122,7 @@ export class ItemModel {
       return await db.transaction(async (tx) => {
         const itemWithTenant = ensureTenantInsert(insertItem, tenantId);
         // Type assertion: Zod schema ensures all required fields are present and transformed
-        const [item] = await tx.insert(items).values(itemWithTenant as typeof items.$inferInsert).returning();
+        const [item] = await tx.insert(items).values(itemWithTenant as any).returning();
         const stockWithTenant = ensureTenantInsert({ itemId: item.id }, tenantId);
         await tx.insert(stock).values(stockWithTenant);
         return item;
@@ -132,10 +145,13 @@ export class ItemModel {
     // The schema automatically transforms units to uppercase before reaching this point
 
     try {
+      // Remove isActive from the update if it's present but not in the schema
+      const { isActive, ...updateData } = insertItem as any;
+      
       const [item] = await db
         .update(items)
         // Type assertion: Zod schema ensures all fields are properly typed and transformed
-        .set(insertItem as Partial<typeof items.$inferInsert>)
+        .set(updateData as any)
         .where(withTenant(items, tenantId, eq(items.id, id)))
         .returning();
       return item || undefined;
@@ -166,7 +182,7 @@ export class ItemModel {
         // Proceed with soft deletion if no stock exists with tenant filtering
         const [item] = await tx
           .update(items)
-          .set({ isActive: false })
+          .set({ isActive: false } as any)
           .where(withTenant(items, tenantId, eq(items.id, id)))
           .returning();
         
@@ -178,7 +194,10 @@ export class ItemModel {
     }
   }
 
-  async getItemsPaginated(tenantId: string, options: PaginationOptions & { isActive?: 'true' | 'false' }): Promise<PaginatedResult<ItemWithVendor>> {
+  async getItemsPaginated(
+    tenantId: string, 
+    options: PaginationOptions & { isActive?: 'true' | 'false' }
+  ): Promise<PaginatedResult<ItemWithVendor>> {
     const { page, limit, offset, tenantCondition } = withTenantPagination(items, tenantId, options);
     
     // Define table columns for sorting and searching

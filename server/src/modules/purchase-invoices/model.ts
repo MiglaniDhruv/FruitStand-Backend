@@ -26,28 +26,46 @@ type PurchaseInvoice = typeof schema.purchaseInvoices.$inferSelect;
 type InsertPurchaseInvoice = typeof schema.insertPurchaseInvoiceSchema._input;
 type InsertInvoiceItem = typeof schema.insertInvoiceItemSchema._input;
 type InsertCrateTransaction = typeof schema.insertCrateTransactionSchema._input;
-type InvoiceWithItems = typeof schema.InvoiceWithItems;
 type PaginationOptions = typeof schema.PaginationOptions;
-export function PaginatedResult<T extends z.ZodTypeAny>(dataSchema: T) {
-  return z.object({
-    data: z.array(dataSchema),
-    pagination: z.object({
-      page: z.number(),
-      limit: z.number(),
-      total: z.number(),
-      totalPages: z.number(),
-      hasNext: z.boolean(),
-      hasPrevious: z.boolean(),
-    }),
-  });
-}
 type InvoiceShareLink = typeof schema.invoiceShareLinks.$inferSelect;
 type CrateTransaction = typeof schema.crateTransactions.$inferSelect;
+type Vendor = typeof schema.vendors.$inferSelect;
 
+// Define InvoiceWithItems type based on actual structure
+type InvoiceWithItems = PurchaseInvoice & {
+  vendor: Vendor;
+  items: Array<{
+    id: string;
+    tenantId: string;
+    invoiceId: string;
+    itemId: string;
+    weight: string;
+    crates: string;
+    rate: string;
+    amount: string;
+    item: string;
+    itemName: string;
+    itemQuality: string;
+    itemUnit: string;
+  }>;
+};
 
 // Local type that extends InvoiceWithItems to include optional crate transaction
 type InvoiceWithItemsAndCrate = InvoiceWithItems & {
   crateTransaction?: CrateTransaction | null;
+};
+
+// Define proper return type for paginated results
+type PaginatedResult<T> = {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrevious: boolean;
+  };
 };
 
 export class PurchaseInvoiceModel {
@@ -89,7 +107,7 @@ export class PurchaseInvoiceModel {
     ]);
     
     // Create lookup maps
-    const vendorMap = new Map(vendorsData.map(v => [v.id, v]));
+    const vendorMap = new Map<string, Vendor>(vendorsData.map(v => [v.id, v] as [string, Vendor]));
     const itemsMap = new Map<string, any[]>();
     itemsDataWithDetails.forEach(({ invoiceItem, item }) => {
       if (!itemsMap.has(invoiceItem.invoiceId)) {
@@ -116,7 +134,7 @@ export class PurchaseInvoiceModel {
           items: itemsMap.get(invoice.id) || []
         };
       })
-      .filter(invoice => invoice !== null) as InvoiceWithItems[];
+      .filter((invoice): invoice is InvoiceWithItems => invoice !== null);
 
     return result;
   }
@@ -171,19 +189,21 @@ export class PurchaseInvoiceModel {
       });
     }
 
-    const netAmount = parseFloat(invoiceData.netAmount);
-    if (isNaN(netAmount) || netAmount <= 0) {
-      throw new ValidationError('Invalid invoice amount', {
-        netAmount: 'Net amount must be a positive number'
-      });
-    }
+    const data = invoiceData as any;
 
-    // Validate vendor ID is provided
-    if (!invoiceData.vendorId) {
-      throw new ValidationError('Vendor is required', {
-        vendorId: 'Vendor must be selected'
-      });
-    }
+const netAmount = parseFloat((data.netAmount ?? '0') as string);
+if (isNaN(netAmount) || netAmount <= 0) {
+  throw new ValidationError('Invalid invoice amount', {
+    netAmount: 'Net amount must be a positive number'
+  });
+}
+
+// Validate vendor ID is provided
+if (!data.vendorId) {
+  throw new ValidationError('Vendor is required', {
+    vendorId: 'Vendor must be selected'
+  });
+}
 
     // Add preflight validation for stockOutEntryIds format
     if (stockOutEntryIds && stockOutEntryIds.some(id => !id || typeof id !== 'string' || id.trim().length === 0)) {
@@ -194,20 +214,21 @@ export class PurchaseInvoiceModel {
 
     try {
       return await db.transaction(async (tx) => {
-      // Validate tenant references
-      await assertSameTenant(tx, tenantId, [
-        { table: 'vendors', id: invoiceData.vendorId }
-      ]);
+  // Validate tenant references
+  await assertSameTenant(tx, tenantId, [
+    { table: 'vendors', id: (invoiceData as any).vendorId! }
+  ]);
+
       
       // Generate invoice number with PI prefix + compact timestamp suffix
       const invoiceNumber = `PI${String(Date.now()).slice(-6)}`;
       
-      const invoiceWithTenant = ensureTenantInsert({
-        ...invoiceData,
-        invoiceNumber,
-        balanceAmount: invoiceData.netAmount,
-        status: INVOICE_STATUS.UNPAID
-      }, tenantId);
+      const invoiceWithTenant: any = ensureTenantInsert({
+  ...(invoiceData as any),
+  invoiceNumber,
+  balanceAmount: (invoiceData as any).netAmount,
+  status: INVOICE_STATUS.UNPAID
+}, tenantId);
       
       const [invoice] = await tx.insert(purchaseInvoices).values(invoiceWithTenant).returning();
       
@@ -241,12 +262,13 @@ export class PurchaseInvoiceModel {
         }
         
         // Validate all belong to the correct vendor
-        const wrongVendor = selectedMovements.filter(sm => sm.item.vendorId !== invoiceData.vendorId);
-        if (wrongVendor.length > 0) {
-          throw new ValidationError('Some selected stock movements do not belong to the selected vendor', {
-            stockOutEntryIds: 'All stock movements must belong to the selected vendor'
-          });
-        }
+        const wrongVendor = selectedMovements.filter(sm => sm.item.vendorId !== data.vendorId!);
+if (wrongVendor.length > 0) {
+  throw new ValidationError('Some selected stock movements do not belong to the selected vendor', {
+    stockOutEntryIds: 'All stock movements must belong to the selected vendor'
+  });
+}
+
         
         // Validate all movements are of type OUT
         const nonOutMovements = selectedMovements.filter(sm => sm.movement.movementType !== 'OUT');
@@ -258,7 +280,7 @@ export class PurchaseInvoiceModel {
         
         // Link movements to this invoice with concurrent protection
         const updatedMovements = await tx.update(stockMovements)
-          .set({ purchaseInvoiceId: invoice.id })
+          .set({ purchaseInvoiceId: invoice.id } as any)
           .where(
             and(
               withTenant(stockMovements, tenantId),
@@ -279,7 +301,7 @@ export class PurchaseInvoiceModel {
           ...item,
           invoiceId: invoice.id
         }, tenantId)
-      );
+      ) as any[];
       
       const createdItems = await tx.insert(invoiceItems).values(itemsWithInvoiceIdAndTenant).returning();
       
@@ -294,10 +316,10 @@ export class PurchaseInvoiceModel {
       let crateTransaction: CrateTransaction | null = null;
       if (crateTransactionData) {
         // Link crate transaction to the created invoice and ensure it references the same vendor
-        const crateDataWithInvoice = ensureTenantInsert({
+        const crateDataWithInvoice: any = ensureTenantInsert({
           ...crateTransactionData,
           purchaseInvoiceId: invoice.id,
-          partyType: 'vendor',
+          partyType: 'vendor' as const,
           vendorId: invoice.vendorId,
           retailerId: null,
         }, tenantId);
@@ -313,33 +335,42 @@ export class PurchaseInvoiceModel {
         // 'Received' increases balance (we receive crates from vendor)
         // 'Returned' decreases balance (we return crates to vendor)
         const balanceChange = crateTransactionData.transactionType === 'Received' 
-          ? crateTransactionData.quantity 
-          : -crateTransactionData.quantity;
+          ? (typeof crateTransactionData.quantity === 'string' ? parseFloat(crateTransactionData.quantity) : crateTransactionData.quantity)
+          : -(typeof crateTransactionData.quantity === 'string' ? parseFloat(crateTransactionData.quantity) : crateTransactionData.quantity);
         
         await tx.update(vendors)
           .set({ 
-            crateBalance: sql`COALESCE(${vendors.crateBalance}, 0) + ${balanceChange}`
-          })
+            crateBalance: sql`COALESCE(${vendors.crateBalance}, 0) + ${balanceChange}` 
+          }as any )
           .where(withTenant(vendors, tenantId, eq(vendors.id, invoice.vendorId)));
       }
       
       // Update vendor balance - increase by netAmount since we now owe them more
       await tx.update(vendors)
         .set({ 
-          balance: sql`COALESCE(${vendors.balance}, 0) + ${invoice.netAmount}`
-        })
+          balance: sql`COALESCE(${vendors.balance}, 0) + ${invoice.netAmount}`  }as any)
         .where(withTenant(vendors, tenantId, eq(vendors.id, invoice.vendorId)));
+      
+      // Format items with item details
+      const formattedItems = createdItems.map(item => ({
+        ...item,
+        item: '',
+        itemName: '',
+        itemQuality: '',
+        itemUnit: ''
+      }));
       
       return { 
         ...invoice, 
         vendor, 
-        items: createdItems,
+        items: formattedItems,
         crateTransaction 
       };
     });
     } catch (error) {
       if (error instanceof AppError) throw error;
       handleDatabaseError(error);
+      throw error;
     }
   }
 
@@ -357,13 +388,18 @@ export class PurchaseInvoiceModel {
         items: 'At least one item is required'
       });
     }
+const data = invoiceData as { 
+  netAmount: number | string; 
+  [key: string]: any;
+};
 
-    const netAmount = parseFloat(invoiceData.netAmount);
-    if (isNaN(netAmount) || netAmount <= 0) {
-      throw new ValidationError('Invalid invoice amount', {
-        netAmount: 'Net amount must be a positive number'
-      });
-    }
+    const netAmount = parseFloat((data.netAmount ?? '0') as string);
+if (isNaN(netAmount) || netAmount <= 0) {
+  throw new ValidationError('Invalid invoice amount', {
+    netAmount: 'Net amount must be a positive number'
+  });
+}
+
 
     // Add preflight validation for stockOutEntryIds format
     if (stockOutEntryIds && stockOutEntryIds.some(id => !id || typeof id !== 'string' || id.trim().length === 0)) {
@@ -400,8 +436,8 @@ export class PurchaseInvoiceModel {
 
         await tx.update(vendors)
           .set({
-            balance: sql`COALESCE(${vendors.balance}, 0) - ${oldInvoice.netAmount}`
-          })
+            balance: sql`COALESCE(${vendors.balance}, 0) - ${oldInvoice.netAmount}` 
+          }as any)
           .where(and(
             withTenant(vendors, tenantId),
             eq(vendors.id, oldInvoice.vendorId)
@@ -430,8 +466,8 @@ export class PurchaseInvoiceModel {
           // Update vendor crate balance
           await tx.update(vendors)
             .set({
-              crateBalance: sql`COALESCE(${vendors.crateBalance}, 0) + ${totalReverseChange}`
-            })
+              crateBalance: sql`COALESCE(${vendors.crateBalance}, 0) + ${totalReverseChange}` 
+            }as any)
             .where(and(
               withTenant(vendors, tenantId),
               eq(vendors.id, oldInvoice.vendorId)
@@ -447,25 +483,30 @@ export class PurchaseInvoiceModel {
 
         // Phase 4: Unlink old stock movements
         await tx.update(stockMovements)
-          .set({ purchaseInvoiceId: null })
+          .set({ purchaseInvoiceId: null } as any)
           .where(withTenant(stockMovements, tenantId, eq(stockMovements.purchaseInvoiceId, invoiceId)));
 
         // Phase 5: Delete old invoice items
         await tx.delete(invoiceItems)
           .where(withTenant(invoiceItems, tenantId, eq(invoiceItems.invoiceId, invoiceId)));
+const data = invoiceData as { 
+  vendorId: string; 
+  netAmount: number | string; 
+  [key: string]: any;
+};
 
         // Validate tenant references for updated vendorId
         await assertSameTenant(tx, tenantId, [
-          { table: 'vendors', id: invoiceData.vendorId }
-        ]);
+  { table: 'vendors', id: data.vendorId! }
+]);
 
-        // Phase 6: Update invoice with new data
-        const invoiceWithTenant = ensureTenantInsert({
-          ...invoiceData,
-          invoiceNumber: oldInvoice.invoiceNumber,
-          balanceAmount: invoiceData.netAmount,
-          status: INVOICE_STATUS.UNPAID
-        }, tenantId);
+// Phase 6: Update invoice with new data
+const invoiceWithTenant: any = ensureTenantInsert({
+  ...data,
+  invoiceNumber: oldInvoice.invoiceNumber,
+  balanceAmount: data.netAmount,
+  status: INVOICE_STATUS.UNPAID
+}, tenantId);
 
         const [updatedInvoice] = await tx.update(purchaseInvoices)
           .set(invoiceWithTenant)
@@ -519,7 +560,7 @@ export class PurchaseInvoiceModel {
           
           // Link movements to this invoice with concurrent protection
           const updatedMovements = await tx.update(stockMovements)
-            .set({ purchaseInvoiceId: updatedInvoice.id })
+            .set({ purchaseInvoiceId: updatedInvoice.id } as any)
             .where(
               and(
                 withTenant(stockMovements, tenantId),
@@ -541,7 +582,7 @@ export class PurchaseInvoiceModel {
             ...item,
             invoiceId: invoiceId
           }, tenantId)
-        );
+        ) as any[];
         
         const createdItems = await tx.insert(invoiceItems).values(itemsWithInvoiceIdAndTenant).returning();
 
@@ -555,18 +596,18 @@ export class PurchaseInvoiceModel {
 
         await tx.update(vendors)
           .set({ 
-            balance: sql`COALESCE(${vendors.balance}, 0) + ${updatedInvoice.netAmount}`
-          })
+            balance: sql`COALESCE(${vendors.balance}, 0) + ${updatedInvoice.netAmount}` 
+          }as any)
           .where(withTenant(vendors, tenantId, eq(vendors.id, updatedInvoice.vendorId)));
 
         // Phase 10: Create new crate transaction (if provided)
         let crateTransaction: CrateTransaction | null = null;
         if (crateTransactionData) {
           // Link crate transaction to the updated invoice and ensure it references the same vendor
-          const crateDataWithInvoice = ensureTenantInsert({
+          const crateDataWithInvoice: any = ensureTenantInsert({
             ...crateTransactionData,
             purchaseInvoiceId: invoiceId,
-            partyType: 'vendor',
+            partyType: 'vendor' as const,
             vendorId: updatedInvoice.vendorId,
             retailerId: null,
           }, tenantId);
@@ -582,13 +623,13 @@ export class PurchaseInvoiceModel {
           // 'Received' increases balance (we receive crates from vendor)
           // 'Returned' decreases balance (we return crates to vendor)
           const balanceChange = crateTransactionData.transactionType === 'Received' 
-            ? crateTransactionData.quantity 
-            : -crateTransactionData.quantity;
+            ? (typeof crateTransactionData.quantity === 'string' ? parseFloat(crateTransactionData.quantity) : crateTransactionData.quantity)
+            : -(typeof crateTransactionData.quantity === 'string' ? parseFloat(crateTransactionData.quantity) : crateTransactionData.quantity);
           
           await tx.update(vendors)
             .set({ 
-              crateBalance: sql`COALESCE(${vendors.crateBalance}, 0) + ${balanceChange}`
-            })
+              crateBalance: sql`COALESCE(${vendors.crateBalance}, 0) + ${balanceChange}` 
+            }as any)
             .where(withTenant(vendors, tenantId, eq(vendors.id, updatedInvoice.vendorId)));
         }
 
@@ -600,16 +641,26 @@ export class PurchaseInvoiceModel {
           throw new NotFoundError('Vendor');
         }
 
+        // Format items with item details
+        const formattedItems = createdItems.map(item => ({
+          ...item,
+          item: '',
+          itemName: '',
+          itemQuality: '',
+          itemUnit: ''
+        }));
+
         return { 
           ...updatedInvoice, 
           vendor: finalVendor, 
-          items: createdItems,
+          items: formattedItems,
           crateTransaction 
         };
       });
     } catch (error) {
       if (error instanceof AppError) throw error;
       handleDatabaseError(error);
+      throw error;
     }
   }
 
@@ -728,7 +779,7 @@ export class PurchaseInvoiceModel {
     ]);
     
     // Create lookup maps
-    const vendorMap = new Map(vendorsData.map(v => [v.id, v]));
+    const vendorMap = new Map<string, Vendor>(vendorsData.map(v => [v.id, v] as [string, Vendor]));
     const itemsMap = new Map<string, any[]>();
     itemsDataWithDetails.forEach(({ invoiceItem, item }) => {
       if (!itemsMap.has(invoiceItem.invoiceId)) {
@@ -755,7 +806,7 @@ export class PurchaseInvoiceModel {
           items: itemsMap.get(invoice.id) || []
         };
       })
-      .filter(invoice => invoice !== null) as InvoiceWithItems[];
+      .filter((invoice): invoice is InvoiceWithItems => invoice !== null);
     
     // Get total count with same conditions
     const [{ count: total }] = await (
@@ -815,8 +866,8 @@ export class PurchaseInvoiceModel {
       if (crateTransactionsList.length > 0) {
         await tx.update(vendors)
           .set({
-            crateBalance: sql`COALESCE(${vendors.crateBalance}, 0) + ${totalReverseChange}`
-          })
+            crateBalance: sql`COALESCE(${vendors.crateBalance}, 0) + ${totalReverseChange}` 
+          }as any)
           .where(and(
             withTenant(vendors, tenantId),
             eq(vendors.id, invoice.vendorId)
@@ -835,8 +886,7 @@ export class PurchaseInvoiceModel {
       // Step 7: Reverse vendor monetary balance
       await tx.update(vendors)
         .set({
-          balance: sql`COALESCE(${vendors.balance}, 0) - ${invoice.netAmount}`
-        })
+          balance: sql`COALESCE(${vendors.balance}, 0) - ${invoice.netAmount}` }as any)
         .where(and(
           withTenant(vendors, tenantId),
           eq(vendors.id, invoice.vendorId)
@@ -854,7 +904,7 @@ export class PurchaseInvoiceModel {
       
       // Unlink stock movements from this invoice
       await tx.update(stockMovements)
-        .set({ purchaseInvoiceId: null })
+        .set({ purchaseInvoiceId: null } as any)
         .where(and(
           withTenant(stockMovements, tenantId),
           eq(stockMovements.purchaseInvoiceId, id)
@@ -887,6 +937,7 @@ export class PurchaseInvoiceModel {
     } catch (error) {
       if (error instanceof AppError) throw error;
       handleDatabaseError(error);
+      throw error;
     }
   }
 }

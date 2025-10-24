@@ -1,8 +1,7 @@
-// Export model and router
 export { AuthModel } from "./model";
-export { AuthController } from "./controller";
+export * as AuthController from "./controller"; // namespace import
 export { AuthRouter } from "./routes";
 
-// Export router instance for use in main server
+// Router instance
 import { AuthRouter as Router } from "./routes";
 export const authRouter = new Router();

@@ -18,7 +18,11 @@ type ExpenseRequest<Params = {}, Body = {}, Query = {}> = AuthenticatedRequest<
   any,
   Body,
   Query
->;
+> & {
+  params: Params;
+  body: Body;
+  query: Query;
+};
 
 export class ExpenseController extends BaseController {
   private expenseModel: ExpenseModel;
@@ -58,7 +62,7 @@ export class ExpenseController extends BaseController {
     });
 
     const category = await this.wrapDatabaseOperation(() =>
-      this.expenseModel.createExpenseCategory(req.tenantId, categoryData)
+      this.expenseModel.createExpenseCategory(req.tenantId, categoryData as any)
     );
 
     res.status(201).json(category);
@@ -162,7 +166,7 @@ export class ExpenseController extends BaseController {
 
     try {
       const expense = await this.wrapDatabaseOperation(() =>
-        this.expenseModel.createExpense(req.tenantId, expenseData)
+        this.expenseModel.createExpense(req.tenantId, expenseData as any)
       );
       res.status(201).json(expense);
     } catch (error) {
