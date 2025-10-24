@@ -1,10 +1,10 @@
 {
   "compilerOptions": {
-    /* === Output and Module System === */
     "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
+    "module": "commonjs",         
+    "moduleResolution": "node",      
     "outDir": "./dist", 
+    "rootDir": ".",                   
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
@@ -19,19 +19,21 @@
       "@src/*": ["src/*"]
     },
     "typeRoots": ["./src/types", "./node_modules/@types"],
-    "allowJs": true,                 // allow .js files too
-    "checkJs": false,                // don’t type-check JS files
+    "allowJs": true,                 
+    "checkJs": false,                
     "forceConsistentCasingInFileNames": true,
-    "isolatedModules": false         // avoid bundler complaints on Vercel
+    "isolatedModules": false
   },
 
   "include": [
+    "index.ts",                     
+    "db.ts",                          
+    "initializeDatabase.ts",          
     "src/**/*",
     "shared/**/*",
     "src/types/**/*"
   ],
 
-  /* === Optional: Exclude build and node_modules === */
   "exclude": [
     "dist",
     "node_modules"

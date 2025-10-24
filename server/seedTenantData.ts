@@ -280,595 +280,595 @@ async function createTenantUsers(tenantId: string, config: typeof TENANT_CONFIGS
   return createdUsers;
 }
 
-// async function createTenantVendors(tenantId: string, scenario: string) {
-//   console.log(`Creating vendors for tenant scenario: ${scenario}`);
+async function createTenantVendors(tenantId: string, scenario: string) {
+  console.log(`Creating vendors for tenant scenario: ${scenario}`);
   
-//   const vendorCount = scenario === 'established' ? 5 : scenario === 'growing' ? 3 : 2;
-//   const vendorData = VENDOR_TEMPLATES.slice(0, vendorCount);
-//   const createdVendors = [];
+  const vendorCount = scenario === 'established' ? 5 : scenario === 'growing' ? 3 : 2;
+  const vendorData = VENDOR_TEMPLATES.slice(0, vendorCount);
+  const createdVendors = [];
   
-//   for (let i = 0; i < vendorData.length; i++) {
-//     const vendor = vendorData[i];
-//     const balance = scenario === 'established' ? 
-//       Math.random() * 50000 - 25000 : // Can have positive or negative balance
-//       scenario === 'growing' ? 
-//       Math.random() * 30000 - 10000 : // Mostly positive, some negative
-//       Math.random() * 5000; // Small positive balances for new business
+  for (let i = 0; i < vendorData.length; i++) {
+    const vendor = vendorData[i];
+    const balance = scenario === 'established' ? 
+      Math.random() * 50000 - 25000 : // Can have positive or negative balance
+      scenario === 'growing' ? 
+      Math.random() * 30000 - 10000 : // Mostly positive, some negative
+      Math.random() * 5000; // Small positive balances for new business
     
-//     const [createdVendor] = await db.insert(vendors).values(
-//       ensureTenantInsert({
-//         tenantId,
-//         name: vendor.name,
-//         phone: vendor.phone,
-//         address: `${vendor.name} Farm, ${scenario === 'established' ? 'Maharashtra' : scenario === 'growing' ? 'Pune Region' : 'Nashik Region'}`,
-//         balance: Math.round(balance).toString(),
-//         isActive: true
-//       }, tenantId)
-//     ).returning({ id: vendors.id });
+    const [createdVendor] = await db.insert(vendors).values(
+      ensureTenantInsert({
+        tenantId,
+        name: vendor.name,
+        phone: vendor.phone,
+        address: `${vendor.name} Farm, ${scenario === 'established' ? 'Maharashtra' : scenario === 'growing' ? 'Pune Region' : 'Nashik Region'}`,
+        balance: Math.round(balance).toString(),
+        isActive: true
+      }, tenantId)
+    ).returning({ id: vendors.id });
     
-//     createdVendors.push(createdVendor);
-//   }
+    createdVendors.push(createdVendor);
+  }
   
-//   return createdVendors;
-// }
+  return createdVendors;
+}
 
-// async function createTenantItems(tenantId: string, scenario: string) {
-//   console.log(`Creating items for tenant scenario: ${scenario}`);
+async function createTenantItems(tenantId: string, scenario: string) {
+  console.log(`Creating items for tenant scenario: ${scenario}`);
   
-//   const itemCount = scenario === 'established' ? 8 : scenario === 'growing' ? 6 : 4;
-//   const itemData = ITEM_TEMPLATES.slice(0, itemCount);
-//   const createdItems = [];
+  const itemCount = scenario === 'established' ? 8 : scenario === 'growing' ? 6 : 4;
+  const itemData = ITEM_TEMPLATES.slice(0, itemCount);
+  const createdItems = [];
   
-//   for (const item of itemData) {
-//     const [createdItem] = await db.insert(items).values(
-//       ensureTenantInsert({
-//         tenantId,
-//         name: item.name,
-//         category: item.category,
-//         unit: item.unit,
-//         quality: item.quality,
-//         currentStock: scenario === 'established' ? 
-//           Math.floor(Math.random() * 1000) + 100 :
-//           scenario === 'growing' ?
-//           Math.floor(Math.random() * 500) + 50 :
-//           Math.floor(Math.random() * 100) + 10,
-//         isActive: true
-//       }, tenantId)
-//     ).returning({ id: items.id });
+  for (const item of itemData) {
+    const [createdItem] = await db.insert(items).values(
+      ensureTenantInsert({
+        tenantId,
+        name: item.name,
+        category: item.category,
+        unit: item.unit,
+        quality: item.quality,
+        currentStock: scenario === 'established' ? 
+          Math.floor(Math.random() * 1000) + 100 :
+          scenario === 'growing' ?
+          Math.floor(Math.random() * 500) + 50 :
+          Math.floor(Math.random() * 100) + 10,
+        isActive: true
+      }, tenantId)
+    ).returning({ id: items.id });
     
-//     createdItems.push(createdItem);
-//   }
+    createdItems.push(createdItem);
+  }
   
-//   return createdItems;
-// }
+  return createdItems;
+}
 
-// async function createTenantBankAccounts(tenantId: string, scenario: string) {
-//   console.log(`Creating bank accounts for tenant scenario: ${scenario}`);
+async function createTenantBankAccounts(tenantId: string, scenario: string) {
+  console.log(`Creating bank accounts for tenant scenario: ${scenario}`);
   
-//   const accounts = [
-//     {
-//       name: 'Current Account - SBI',
-//       accountNumber: '1234567890',
-//       bankName: 'State Bank of India',
-//       ifscCode: 'SBIN0001234'
-//     },
-//     {
-//       name: 'Savings Account - HDFC',
-//       accountNumber: '9876543210',
-//       bankName: 'HDFC Bank',
-//       ifscCode: 'HDFC0001234'
-//     }
-//   ];
+  const accounts = [
+    {
+      name: 'Current Account - SBI',
+      accountNumber: '1234567890',
+      bankName: 'State Bank of India',
+      ifscCode: 'SBIN0001234'
+    },
+    {
+      name: 'Savings Account - HDFC',
+      accountNumber: '9876543210',
+      bankName: 'HDFC Bank',
+      ifscCode: 'HDFC0001234'
+    }
+  ];
   
-//   const accountCount = scenario === 'new' ? 1 : 2;
-//   const createdAccounts = [];
+  const accountCount = scenario === 'new' ? 1 : 2;
+  const createdAccounts = [];
   
-//   for (let i = 0; i < accountCount; i++) {
-//     const account = accounts[i];
-//     const balance = scenario === 'established' ? 
-//       Math.random() * 500000 + 100000 :
-//       scenario === 'growing' ?
-//       Math.random() * 200000 + 50000 :
-//       Math.random() * 50000 + 10000;
+  for (let i = 0; i < accountCount; i++) {
+    const account = accounts[i];
+    const balance = scenario === 'established' ? 
+      Math.random() * 500000 + 100000 :
+      scenario === 'growing' ?
+      Math.random() * 200000 + 50000 :
+      Math.random() * 50000 + 10000;
     
-//     const [createdAccount] = await db.insert(bankAccounts).values(
-//       ensureTenantInsert({
-//         tenantId,
-//         name: account.name,
-//         accountNumber: account.accountNumber,
-//         bankName: account.bankName,
-//         ifscCode: account.ifscCode,
-//         balance: Math.round(balance).toString(),
-//         isActive: true
-//       }, tenantId)
-//     ).returning({ id: bankAccounts.id });
+    const [createdAccount] = await db.insert(bankAccounts).values(
+      ensureTenantInsert({
+        tenantId,
+        name: account.name,
+        accountNumber: account.accountNumber,
+        bankName: account.bankName,
+        ifscCode: account.ifscCode,
+        balance: Math.round(balance).toString(),
+        isActive: true
+      }, tenantId)
+    ).returning({ id: bankAccounts.id });
     
-//     createdAccounts.push(createdAccount);
-//   }
+    createdAccounts.push(createdAccount);
+  }
   
-//   return createdAccounts;
-// }
+  return createdAccounts;
+}
 
-// async function createTenantRetailers(tenantId: string, scenario: string) {
-//   console.log(`Creating retailers for tenant scenario: ${scenario}`);
+async function createTenantRetailers(tenantId: string, scenario: string) {
+  console.log(`Creating retailers for tenant scenario: ${scenario}`);
   
-//   const retailerCount = scenario === 'established' ? 4 : scenario === 'growing' ? 3 : 1;
-//   const createdRetailers = [];
+  const retailerCount = scenario === 'established' ? 4 : scenario === 'growing' ? 3 : 1;
+  const createdRetailers = [];
   
-//   for (let i = 0; i < retailerCount; i++) {
-//     const retailer = RETAILER_TEMPLATES[i];
-//     const balance = scenario === 'established' ? 
-//       Math.random() * 20000 - 10000 : // Mixed balances
-//       scenario === 'growing' ?
-//       Math.random() * 10000 - 2000 : // Mostly small balances
-//       Math.random() * 1000; // Very small balances
+  for (let i = 0; i < retailerCount; i++) {
+    const retailer = RETAILER_TEMPLATES[i];
+    const balance = scenario === 'established' ? 
+      Math.random() * 20000 - 10000 : // Mixed balances
+      scenario === 'growing' ?
+      Math.random() * 10000 - 2000 : // Mostly small balances
+      Math.random() * 1000; // Very small balances
     
-//     const [createdRetailer] = await db.insert(retailers).values(
-//       ensureTenantInsert({
-//         tenantId,
-//         name: retailer.name,
-//         phone: `+91-987654${3300 + i}`,
-//         address: `${retailer.name}, Market Area`,
-//         balance: Math.round(balance).toString(),
-//         isActive: true
-//       }, tenantId)
-//     ).returning({ id: retailers.id });
+    const [createdRetailer] = await db.insert(retailers).values(
+      ensureTenantInsert({
+        tenantId,
+        name: retailer.name,
+        phone: `+91-987654${3300 + i}`,
+        address: `${retailer.name}, Market Area`,
+        balance: Math.round(balance).toString(),
+        isActive: true
+      }, tenantId)
+    ).returning({ id: retailers.id });
     
-//     createdRetailers.push(createdRetailer);
-//   }
+    createdRetailers.push(createdRetailer);
+  }
   
-//   return createdRetailers;
-// }
+  return createdRetailers;
+}
 
-// async function createTenantExpenseCategories(tenantId: string) {
-//   console.log(`Creating expense categories for tenant`);
+async function createTenantExpenseCategories(tenantId: string) {
+  console.log(`Creating expense categories for tenant`);
   
-//   const createdCategories = [];
+  const createdCategories = [];
   
-//   for (const categoryName of EXPENSE_CATEGORIES) {
-//     const [category] = await db.insert(expenseCategories).values(
-//       ensureTenantInsert({
-//         tenantId,
-//         name: categoryName,
-//         isActive: true
-//       }, tenantId)
-//     ).returning({ id: expenseCategories.id });
+  for (const categoryName of EXPENSE_CATEGORIES) {
+    const [category] = await db.insert(expenseCategories).values(
+      ensureTenantInsert({
+        tenantId,
+        name: categoryName,
+        isActive: true
+      }, tenantId)
+    ).returning({ id: expenseCategories.id });
     
-//     createdCategories.push(category);
-//   }
+    createdCategories.push(category);
+  }
   
-//   return createdCategories;
-// }
+  return createdCategories;
+}
 
-// async function createTransactionalData(
-//   tenantId: string, 
-//   scenario: string, 
-//   vendorIds: { id: string }[], 
-//   itemIds: { id: string }[], 
-//   bankAccountIds: { id: string }[], 
-//   retailerIds: { id: string }[],
-//   expenseCategoryIds: { id: string }[]
-// ) {
-//   console.log(`Creating transactional data for scenario: ${scenario}`);
+async function createTransactionalData(
+  tenantId: string, 
+  scenario: string, 
+  vendorIds: { id: string }[], 
+  itemIds: { id: string }[], 
+  bankAccountIds: { id: string }[], 
+  retailerIds: { id: string }[],
+  expenseCategoryIds: { id: string }[]
+) {
+  console.log(`Creating transactional data for scenario: ${scenario}`);
   
-//   // Determine transaction volumes based on scenario
-//   const volumes = {
-//     established: { purchases: 15, sales: 12, expenses: 8, crates: 6 },
-//     growing: { purchases: 8, sales: 6, expenses: 5, crates: 4 },
-//     new: { purchases: 3, sales: 2, expenses: 2, crates: 1 }
-//   };
+  // Determine transaction volumes based on scenario
+  const volumes = {
+    established: { purchases: 15, sales: 12, expenses: 8, crates: 6 },
+    growing: { purchases: 8, sales: 6, expenses: 5, crates: 4 },
+    new: { purchases: 3, sales: 2, expenses: 2, crates: 1 }
+  };
   
-//   const vol = volumes[scenario as keyof typeof volumes];
+  const vol = volumes[scenario as keyof typeof volumes];
   
-//   // Create purchase invoices with items and payments
-//   const createdPurchaseInvoices = [];
-//   for (let i = 0; i < vol.purchases; i++) {
-//     const vendorId = vendorIds[Math.floor(Math.random() * vendorIds.length)].id;
-//     const invoiceDate = new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000);
-//     const invoiceNumber = `PI${String(i + 1).padStart(4, '0')}`;
+  // Create purchase invoices with items and payments
+  const createdPurchaseInvoices = [];
+  for (let i = 0; i < vol.purchases; i++) {
+    const vendorId = vendorIds[Math.floor(Math.random() * vendorIds.length)].id;
+    const invoiceDate = new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000);
+    const invoiceNumber = `PI${String(i + 1).padStart(4, '0')}`;
     
-//     // Calculate realistic amounts based on scenario
-//     const baseAmount = scenario === 'established' ? 25000 : scenario === 'growing' ? 15000 : 8000;
-//     const totalSelling = baseAmount + (Math.random() * baseAmount * 0.5);
-//     const totalExpense = totalSelling * 0.15; // 15% expenses
-//     const netAmount = totalSelling - totalExpense;
-//     const paidAmount = Math.random() < 0.7 ? netAmount : Math.random() * netAmount;
-//     const balanceAmount = netAmount - paidAmount;
+    // Calculate realistic amounts based on scenario
+    const baseAmount = scenario === 'established' ? 25000 : scenario === 'growing' ? 15000 : 8000;
+    const totalSelling = baseAmount + (Math.random() * baseAmount * 0.5);
+    const totalExpense = totalSelling * 0.15; // 15% expenses
+    const netAmount = totalSelling - totalExpense;
+    const paidAmount = Math.random() < 0.7 ? netAmount : Math.random() * netAmount;
+    const balanceAmount = netAmount - paidAmount;
     
-//     const [invoice] = await db.insert(purchaseInvoices).values(
-//       ensureTenantInsert({
-//         tenantId,
-//         vendorId,
-//         invoiceNumber,
-//         invoiceDate,
-//         commission: (totalSelling * 0.08).toFixed(2), // 8% commission
-//         labour: (totalSelling * 0.03).toFixed(2), // 3% labour
-//         truckFreight: (totalSelling * 0.02).toFixed(2), // 2% freight
-//         crateFreight: (totalSelling * 0.01).toFixed(2), // 1% crate freight
-//         postExpenses: (totalSelling * 0.005).toFixed(2), // 0.5% post expenses
-//         draftExpenses: (totalSelling * 0.005).toFixed(2), // 0.5% draft expenses
-//         vatav: "0.00",
-//         otherExpenses: "0.00",
-//         advance: "0.00",
-//         totalExpense: totalExpense.toFixed(2),
-//         totalSelling: totalSelling.toFixed(2),
-//         totalLessExpenses: netAmount.toFixed(2),
-//         netAmount: netAmount.toFixed(2),
-//         paidAmount: paidAmount.toFixed(2),
-//         balanceAmount: balanceAmount.toFixed(2),
-//         status: balanceAmount <= 0 ? 'Paid' : paidAmount > 0 ? 'Partially Paid' : 'Unpaid'
-//       }, tenantId)
-//     ).returning({ id: purchaseInvoices.id });
+    const [invoice] = await db.insert(purchaseInvoices).values(
+      ensureTenantInsert({
+        tenantId,
+        vendorId,
+        invoiceNumber,
+        invoiceDate,
+        commission: (totalSelling * 0.08).toFixed(2), // 8% commission
+        labour: (totalSelling * 0.03).toFixed(2), // 3% labour
+        truckFreight: (totalSelling * 0.02).toFixed(2), // 2% freight
+        crateFreight: (totalSelling * 0.01).toFixed(2), // 1% crate freight
+        postExpenses: (totalSelling * 0.005).toFixed(2), // 0.5% post expenses
+        draftExpenses: (totalSelling * 0.005).toFixed(2), // 0.5% draft expenses
+        vatav: "0.00",
+        otherExpenses: "0.00",
+        advance: "0.00",
+        totalExpense: totalExpense.toFixed(2),
+        totalSelling: totalSelling.toFixed(2),
+        totalLessExpenses: netAmount.toFixed(2),
+        netAmount: netAmount.toFixed(2),
+        paidAmount: paidAmount.toFixed(2),
+        balanceAmount: balanceAmount.toFixed(2),
+        status: balanceAmount <= 0 ? 'Paid' : paidAmount > 0 ? 'Partially Paid' : 'Unpaid'
+      }, tenantId)
+    ).returning({ id: purchaseInvoices.id });
     
-//     createdPurchaseInvoices.push({ ...invoice, vendorId, netAmount, paidAmount, invoiceDate, invoiceNumber });
+    createdPurchaseInvoices.push({ ...invoice, vendorId, netAmount, paidAmount, invoiceDate, invoiceNumber });
     
-//     // Create 1-3 invoice items per purchase
-//     const itemCount = Math.floor(Math.random() * 3) + 1;
-//     let remainingAmount = totalSelling;
+    // Create 1-3 invoice items per purchase
+    const itemCount = Math.floor(Math.random() * 3) + 1;
+    let remainingAmount = totalSelling;
     
-//     for (let j = 0; j < itemCount; j++) {
-//       const itemId = itemIds[Math.floor(Math.random() * itemIds.length)].id;
-//       const weight = (Math.random() * 200 + 50).toFixed(1); // 50-250 kg
-//       const crates = Math.floor(parseFloat(weight) / 20); // ~20 kg per crate
-//       const boxes = Math.floor(Math.random() * 10);
-//       const itemAmount = j === itemCount - 1 ? remainingAmount : remainingAmount / (itemCount - j) * (0.7 + Math.random() * 0.6);
-//       const rate = (itemAmount / parseFloat(weight)).toFixed(2);
+    for (let j = 0; j < itemCount; j++) {
+      const itemId = itemIds[Math.floor(Math.random() * itemIds.length)].id;
+      const weight = (Math.random() * 200 + 50).toFixed(1); // 50-250 kg
+      const crates = Math.floor(parseFloat(weight) / 20); // ~20 kg per crate
+      const boxes = Math.floor(Math.random() * 10);
+      const itemAmount = j === itemCount - 1 ? remainingAmount : remainingAmount / (itemCount - j) * (0.7 + Math.random() * 0.6);
+      const rate = (itemAmount / parseFloat(weight)).toFixed(2);
       
-//       await db.insert(invoiceItems).values(
-//         ensureTenantInsert({
-//           tenantId,
-//           invoiceId: invoice.id,
-//           itemId,
-//           weight,
-//           crates: crates.toString(),
-//           boxes: boxes.toString(),
-//           rate,
-//           amount: itemAmount.toFixed(2)
-//         }, tenantId)
-//       );
+      await db.insert(invoiceItems).values(
+        ensureTenantInsert({
+          tenantId,
+          invoiceId: invoice.id,
+          itemId,
+          weight,
+          crates: crates.toString(),
+          boxes: boxes.toString(),
+          rate,
+          amount: itemAmount.toFixed(2)
+        }, tenantId)
+      );
       
-//       // Create stock movements for purchased items
-//       await db.insert(stockMovements).values(
-//         ensureTenantInsert({
-//           tenantId,
-//           itemId,
-//           movementType: 'IN',
-//           quantityInCrates: crates.toString(),
-//           quantityInBoxes: boxes.toString(),
-//           quantityInKgs: weight,
-//           referenceType: 'PURCHASE_INVOICE',
-//           referenceId: invoice.id,
-//           referenceNumber: invoiceNumber,
-//           vendorId,
-//           movementDate: invoiceDate,
-//           notes: `Stock received from purchase - ${invoiceNumber}`
-//         }, tenantId)
-//       );
+      // Create stock movements for purchased items
+      await db.insert(stockMovements).values(
+        ensureTenantInsert({
+          tenantId,
+          itemId,
+          movementType: 'IN',
+          quantityInCrates: crates.toString(),
+          quantityInBoxes: boxes.toString(),
+          quantityInKgs: weight,
+          referenceType: 'PURCHASE_INVOICE',
+          referenceId: invoice.id,
+          referenceNumber: invoiceNumber,
+          vendorId,
+          movementDate: invoiceDate,
+          notes: `Stock received from purchase - ${invoiceNumber}`
+        }, tenantId)
+      );
       
-//       remainingAmount -= itemAmount;
-//     }
+      remainingAmount -= itemAmount;
+    }
     
-//     // Create payments if invoice is paid
-//     if (paidAmount > 0) {
-//       const paymentCount = paidAmount === netAmount ? 1 : Math.floor(Math.random() * 2) + 1;
-//       let remainingPayment = paidAmount;
+    // Create payments if invoice is paid
+    if (paidAmount > 0) {
+      const paymentCount = paidAmount === netAmount ? 1 : Math.floor(Math.random() * 2) + 1;
+      let remainingPayment = paidAmount;
       
-//       for (let k = 0; k < paymentCount; k++) {
-//         const paymentAmount = k === paymentCount - 1 ? remainingPayment : remainingPayment / 2;
-//         const paymentMode = ['Cash', 'Bank', 'UPI', 'Cheque'][Math.floor(Math.random() * 4)];
-//         const paymentDate = new Date(invoiceDate.getTime() + Math.random() * 7 * 24 * 60 * 60 * 1000);
+      for (let k = 0; k < paymentCount; k++) {
+        const paymentAmount = k === paymentCount - 1 ? remainingPayment : remainingPayment / 2;
+        const paymentMode = ['Cash', 'Bank', 'UPI', 'Cheque'][Math.floor(Math.random() * 4)];
+        const paymentDate = new Date(invoiceDate.getTime() + Math.random() * 7 * 24 * 60 * 60 * 1000);
         
-//         await db.insert(payments).values(
-//           ensureTenantInsert({
-//             tenantId,
-//             vendorId,
-//             invoiceId: invoice.id,
-//             amount: paymentAmount.toFixed(2),
-//             paymentMode,
-//             paymentDate,
-//             bankAccountId: paymentMode === 'Bank' || paymentMode === 'Cheque' ? 
-//               bankAccountIds[Math.floor(Math.random() * bankAccountIds.length)].id : null,
-//             chequeNumber: paymentMode === 'Cheque' ? `CHQ${Math.random().toString().substr(2, 6)}` : null,
-//             upiReference: paymentMode === 'UPI' ? `UPI${Math.random().toString().substr(2, 9)}` : null,
-//             notes: `${paymentMode} payment for ${invoiceNumber}`
-//           }, tenantId)
-//         );
+        await db.insert(payments).values(
+          ensureTenantInsert({
+            tenantId,
+            vendorId,
+            invoiceId: invoice.id,
+            amount: paymentAmount.toFixed(2),
+            paymentMode,
+            paymentDate,
+            bankAccountId: paymentMode === 'Bank' || paymentMode === 'Cheque' ? 
+              bankAccountIds[Math.floor(Math.random() * bankAccountIds.length)].id : null,
+            chequeNumber: paymentMode === 'Cheque' ? `CHQ${Math.random().toString().substr(2, 6)}` : null,
+            upiReference: paymentMode === 'UPI' ? `UPI${Math.random().toString().substr(2, 9)}` : null,
+            notes: `${paymentMode} payment for ${invoiceNumber}`
+          }, tenantId)
+        );
         
-//         remainingPayment -= paymentAmount;
-//       }
-//     }
-//   }
+        remainingPayment -= paymentAmount;
+      }
+    }
+  }
   
-//   // Create sales invoices with items and payments
-//   const createdSalesInvoices = [];
-//   for (let i = 0; i < vol.sales; i++) {
-//     const retailerId = retailerIds[Math.floor(Math.random() * retailerIds.length)].id;
-//     const invoiceDate = new Date(Date.now() - Math.random() * 25 * 24 * 60 * 60 * 1000);
-//     const invoiceNumber = `SI${String(i + 1).padStart(4, '0')}`;
+  // Create sales invoices with items and payments
+  const createdSalesInvoices = [];
+  for (let i = 0; i < vol.sales; i++) {
+    const retailerId = retailerIds[Math.floor(Math.random() * retailerIds.length)].id;
+    const invoiceDate = new Date(Date.now() - Math.random() * 25 * 24 * 60 * 60 * 1000);
+    const invoiceNumber = `SI${String(i + 1).padStart(4, '0')}`;
     
-//     const baseAmount = scenario === 'established' ? 15000 : scenario === 'growing' ? 9000 : 4000;
-//     const totalAmount = baseAmount + (Math.random() * baseAmount * 0.4);
-//     const paidAmount = Math.random() < 0.8 ? totalAmount : Math.random() * totalAmount;
-//     const balanceAmount = totalAmount - paidAmount;
+    const baseAmount = scenario === 'established' ? 15000 : scenario === 'growing' ? 9000 : 4000;
+    const totalAmount = baseAmount + (Math.random() * baseAmount * 0.4);
+    const paidAmount = Math.random() < 0.8 ? totalAmount : Math.random() * totalAmount;
+    const balanceAmount = totalAmount - paidAmount;
     
-//     const [salesInvoice] = await db.insert(salesInvoices).values(
-//       ensureTenantInsert({
-//         tenantId,
-//         retailerId,
-//         invoiceNumber,
-//         invoiceDate,
-//         totalAmount: totalAmount.toFixed(2),
-//         paidAmount: paidAmount.toFixed(2),
-//         balanceAmount: balanceAmount.toFixed(2),
-//         udhaaarAmount: Math.random() < 0.3 ? (totalAmount * 0.1).toFixed(2) : "0.00",
-//         shortfallAmount: Math.random() < 0.2 ? (totalAmount * 0.05).toFixed(2) : "0.00",
-//         status: balanceAmount <= 0 ? 'Paid' : paidAmount > 0 ? 'Partially Paid' : 'Unpaid',
-//         notes: `Sales to ${retailerId}`
-//       }, tenantId)
-//     ).returning({ id: salesInvoices.id });
+    const [salesInvoice] = await db.insert(salesInvoices).values(
+      ensureTenantInsert({
+        tenantId,
+        retailerId,
+        invoiceNumber,
+        invoiceDate,
+        totalAmount: totalAmount.toFixed(2),
+        paidAmount: paidAmount.toFixed(2),
+        balanceAmount: balanceAmount.toFixed(2),
+        udhaaarAmount: Math.random() < 0.3 ? (totalAmount * 0.1).toFixed(2) : "0.00",
+        shortfallAmount: Math.random() < 0.2 ? (totalAmount * 0.05).toFixed(2) : "0.00",
+        status: balanceAmount <= 0 ? 'Paid' : paidAmount > 0 ? 'Partially Paid' : 'Unpaid',
+        notes: `Sales to ${retailerId}`
+      }, tenantId)
+    ).returning({ id: salesInvoices.id });
     
-//     createdSalesInvoices.push({ ...salesInvoice, retailerId, totalAmount, paidAmount, invoiceDate, invoiceNumber });
+    createdSalesInvoices.push({ ...salesInvoice, retailerId, totalAmount, paidAmount, invoiceDate, invoiceNumber });
     
-//     // Create 1-2 sales invoice items
-//     const itemCount = Math.floor(Math.random() * 2) + 1;
-//     let remainingAmount = totalAmount;
+    // Create 1-2 sales invoice items
+    const itemCount = Math.floor(Math.random() * 2) + 1;
+    let remainingAmount = totalAmount;
     
-//     for (let j = 0; j < itemCount; j++) {
-//       const itemId = itemIds[Math.floor(Math.random() * itemIds.length)].id;
-//       const weight = (Math.random() * 100 + 20).toFixed(1); // 20-120 kg
-//       const crates = Math.floor(parseFloat(weight) / 20);
-//       const boxes = Math.floor(Math.random() * 5);
-//       const itemAmount = j === itemCount - 1 ? remainingAmount : remainingAmount / (itemCount - j) * (0.8 + Math.random() * 0.4);
-//       const rate = (itemAmount / parseFloat(weight)).toFixed(2);
+    for (let j = 0; j < itemCount; j++) {
+      const itemId = itemIds[Math.floor(Math.random() * itemIds.length)].id;
+      const weight = (Math.random() * 100 + 20).toFixed(1); // 20-120 kg
+      const crates = Math.floor(parseFloat(weight) / 20);
+      const boxes = Math.floor(Math.random() * 5);
+      const itemAmount = j === itemCount - 1 ? remainingAmount : remainingAmount / (itemCount - j) * (0.8 + Math.random() * 0.4);
+      const rate = (itemAmount / parseFloat(weight)).toFixed(2);
       
-//       await db.insert(salesInvoiceItems).values(
-//         ensureTenantInsert({
-//           tenantId,
-//           invoiceId: salesInvoice.id,
-//           itemId,
-//           weight,
-//           crates: crates.toString(),
-//           boxes: boxes.toString(),
-//           rate,
-//           amount: itemAmount.toFixed(2)
-//         }, tenantId)
-//       );
+      await db.insert(salesInvoiceItems).values(
+        ensureTenantInsert({
+          tenantId,
+          invoiceId: salesInvoice.id,
+          itemId,
+          weight,
+          crates: crates.toString(),
+          boxes: boxes.toString(),
+          rate,
+          amount: itemAmount.toFixed(2)
+        }, tenantId)
+      );
       
-//       // Create stock movements for sold items (OUT)
-//       await db.insert(stockMovements).values(
-//         ensureTenantInsert({
-//           tenantId,
-//           itemId,
-//           movementType: 'OUT',
-//           quantityInCrates: crates.toString(),
-//           quantityInBoxes: boxes.toString(),
-//           quantityInKgs: weight,
-//           referenceType: 'SALES_INVOICE',
-//           referenceId: salesInvoice.id,
-//           referenceNumber: invoiceNumber,
-//           retailerId,
-//           rate,
-//           movementDate: invoiceDate,
-//           notes: `Stock sold - ${invoiceNumber}`
-//         }, tenantId)
-//       );
+      // Create stock movements for sold items (OUT)
+      await db.insert(stockMovements).values(
+        ensureTenantInsert({
+          tenantId,
+          itemId,
+          movementType: 'OUT',
+          quantityInCrates: crates.toString(),
+          quantityInBoxes: boxes.toString(),
+          quantityInKgs: weight,
+          referenceType: 'SALES_INVOICE',
+          referenceId: salesInvoice.id,
+          referenceNumber: invoiceNumber,
+          retailerId,
+          rate,
+          movementDate: invoiceDate,
+          notes: `Stock sold - ${invoiceNumber}`
+        }, tenantId)
+      );
       
-//       remainingAmount -= itemAmount;
-//     }
+      remainingAmount -= itemAmount;
+    }
     
-//     // Create sales payments if invoice is paid
-//     if (paidAmount > 0) {
-//       const paymentCount = paidAmount === totalAmount ? 1 : Math.floor(Math.random() * 2) + 1;
-//       let remainingPayment = paidAmount;
+    // Create sales payments if invoice is paid
+    if (paidAmount > 0) {
+      const paymentCount = paidAmount === totalAmount ? 1 : Math.floor(Math.random() * 2) + 1;
+      let remainingPayment = paidAmount;
       
-//       for (let k = 0; k < paymentCount; k++) {
-//         const paymentAmount = k === paymentCount - 1 ? remainingPayment : remainingPayment / 2;
-//         const paymentMode = ['Cash', 'Bank', 'UPI'][Math.floor(Math.random() * 3)];
-//         const paymentDate = new Date(invoiceDate.getTime() + Math.random() * 5 * 24 * 60 * 60 * 1000);
+      for (let k = 0; k < paymentCount; k++) {
+        const paymentAmount = k === paymentCount - 1 ? remainingPayment : remainingPayment / 2;
+        const paymentMode = ['Cash', 'Bank', 'UPI'][Math.floor(Math.random() * 3)];
+        const paymentDate = new Date(invoiceDate.getTime() + Math.random() * 5 * 24 * 60 * 60 * 1000);
         
-//         await db.insert(salesPayments).values(
-//           ensureTenantInsert({
-//             tenantId,
-//             invoiceId: salesInvoice.id,
-//             retailerId,
-//             amount: paymentAmount.toFixed(2),
-//             paymentMode,
-//             paymentDate,
-//             bankAccountId: paymentMode === 'Bank' ? 
-//               bankAccountIds[Math.floor(Math.random() * bankAccountIds.length)].id : null,
-//             upiReference: paymentMode === 'UPI' ? `UPI${Math.random().toString().substr(2, 9)}` : null,
-//             notes: `${paymentMode} payment for ${invoiceNumber}`
-//           }, tenantId)
-//         );
+        await db.insert(salesPayments).values(
+          ensureTenantInsert({
+            tenantId,
+            invoiceId: salesInvoice.id,
+            retailerId,
+            amount: paymentAmount.toFixed(2),
+            paymentMode,
+            paymentDate,
+            bankAccountId: paymentMode === 'Bank' ? 
+              bankAccountIds[Math.floor(Math.random() * bankAccountIds.length)].id : null,
+            upiReference: paymentMode === 'UPI' ? `UPI${Math.random().toString().substr(2, 9)}` : null,
+            notes: `${paymentMode} payment for ${invoiceNumber}`
+          }, tenantId)
+        );
         
-//         remainingPayment -= paymentAmount;
-//       }
-//     }
-//   }
+        remainingPayment -= paymentAmount;
+      }
+    }
+  }
   
-//   // Create expenses
-//   for (let i = 0; i < vol.expenses; i++) {
-//     const categoryId = expenseCategoryIds[Math.floor(Math.random() * expenseCategoryIds.length)].id;
-//     const amount = scenario === 'established' ? 
-//       Math.random() * 8000 + 2000 : 
-//       scenario === 'growing' ? 
-//       Math.random() * 5000 + 1000 : 
-//       Math.random() * 2000 + 500;
-//     const paymentDate = new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000);
-//     const paymentMode = ['Cash', 'Bank', 'UPI', 'Cheque'][Math.floor(Math.random() * 4)];
+  // Create expenses
+  for (let i = 0; i < vol.expenses; i++) {
+    const categoryId = expenseCategoryIds[Math.floor(Math.random() * expenseCategoryIds.length)].id;
+    const amount = scenario === 'established' ? 
+      Math.random() * 8000 + 2000 : 
+      scenario === 'growing' ? 
+      Math.random() * 5000 + 1000 : 
+      Math.random() * 2000 + 500;
+    const paymentDate = new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000);
+    const paymentMode = ['Cash', 'Bank', 'UPI', 'Cheque'][Math.floor(Math.random() * 4)];
     
-//     await db.insert(expenses).values(
-//       ensureTenantInsert({
-//         tenantId,
-//         categoryId,
-//         amount: amount.toFixed(2),
-//         description: `Monthly expense - Category ${i + 1}`,
-//         paymentDate,
-//         paymentMode,
-//         bankAccountId: paymentMode === 'Bank' || paymentMode === 'Cheque' ? 
-//           bankAccountIds[Math.floor(Math.random() * bankAccountIds.length)].id : null,
-//         chequeNumber: paymentMode === 'Cheque' ? `CHQ${Math.random().toString().substr(2, 6)}` : null,
-//         upiReference: paymentMode === 'UPI' ? `UPI${Math.random().toString().substr(2, 9)}` : null,
-//         notes: `Business expense payment`
-//       }, tenantId)
-//     );
-//   }
+    await db.insert(expenses).values(
+      ensureTenantInsert({
+        tenantId,
+        categoryId,
+        amount: amount.toFixed(2),
+        description: `Monthly expense - Category ${i + 1}`,
+        paymentDate,
+        paymentMode,
+        bankAccountId: paymentMode === 'Bank' || paymentMode === 'Cheque' ? 
+          bankAccountIds[Math.floor(Math.random() * bankAccountIds.length)].id : null,
+        chequeNumber: paymentMode === 'Cheque' ? `CHQ${Math.random().toString().substr(2, 6)}` : null,
+        upiReference: paymentMode === 'UPI' ? `UPI${Math.random().toString().substr(2, 9)}` : null,
+        notes: `Business expense payment`
+      }, tenantId)
+    );
+  }
   
-//   // Create crate transactions
-//   for (let i = 0; i < vol.crates; i++) {
-//     const retailerId = retailerIds[Math.floor(Math.random() * retailerIds.length)].id;
-//     const transactionType = Math.random() < 0.7 ? 'Issue' : 'Return';
-//     const quantity = Math.floor(Math.random() * 20) + 5; // 5-25 crates
-//     const depositAmount = (quantity * 10).toFixed(2); // ₹10 per crate
-//     const transactionDate = new Date(Date.now() - Math.random() * 20 * 24 * 60 * 60 * 1000);
+  // Create crate transactions
+  for (let i = 0; i < vol.crates; i++) {
+    const retailerId = retailerIds[Math.floor(Math.random() * retailerIds.length)].id;
+    const transactionType = Math.random() < 0.7 ? 'Issue' : 'Return';
+    const quantity = Math.floor(Math.random() * 20) + 5; // 5-25 crates
+    const depositAmount = (quantity * 10).toFixed(2); // ₹10 per crate
+    const transactionDate = new Date(Date.now() - Math.random() * 20 * 24 * 60 * 60 * 1000);
     
-//     await db.insert(crateTransactions).values(
-//       ensureTenantInsert({
-//         tenantId,
-//         retailerId,
-//         transactionType,
-//         quantity,
-//         depositAmount,
-//         transactionDate,
-//         notes: `Crate ${transactionType.toLowerCase()} - ${quantity} units`
-//       }, tenantId)
-//     );
-//   }
+    await db.insert(crateTransactions).values(
+      ensureTenantInsert({
+        tenantId,
+        retailerId,
+        transactionType,
+        quantity,
+        depositAmount,
+        transactionDate,
+        notes: `Crate ${transactionType.toLowerCase()} - ${quantity} units`
+      }, tenantId)
+    );
+  }
   
-//   // Update stock levels based on movements
-//   for (const item of itemIds) {
-//     // Calculate current stock from movements
-//     const movements = await db.select()
-//       .from(stockMovements)
-//       .where(sql`${stockMovements.tenantId} = ${tenantId} AND ${stockMovements.itemId} = ${item.id}`);
+  // Update stock levels based on movements
+  for (const item of itemIds) {
+    // Calculate current stock from movements
+    const movements = await db.select()
+      .from(stockMovements)
+      .where(sql`${stockMovements.tenantId} = ${tenantId} AND ${stockMovements.itemId} = ${item.id}`);
     
-//     let totalCrates = 0, totalBoxes = 0, totalKgs = 0;
+    let totalCrates = 0, totalBoxes = 0, totalKgs = 0;
     
-//     movements.forEach(movement => {
-//       const multiplier = movement.movementType === 'IN' ? 1 : -1;
-//       totalCrates += parseFloat(movement.quantityInCrates || '0') * multiplier;
-//       totalBoxes += parseFloat(movement.quantityInBoxes || '0') * multiplier;
-//       totalKgs += parseFloat(movement.quantityInKgs || '0') * multiplier;
-//     });
+    movements.forEach(movement => {
+      const multiplier = movement.movementType === 'IN' ? 1 : -1;
+      totalCrates += parseFloat(movement.quantityInCrates || '0') * multiplier;
+      totalBoxes += parseFloat(movement.quantityInBoxes || '0') * multiplier;
+      totalKgs += parseFloat(movement.quantityInKgs || '0') * multiplier;
+    });
     
-//     // Ensure no negative stock
-//     totalCrates = Math.max(0, totalCrates);
-//     totalBoxes = Math.max(0, totalBoxes);
-//     totalKgs = Math.max(0, totalKgs);
+    // Ensure no negative stock
+    totalCrates = Math.max(0, totalCrates);
+    totalBoxes = Math.max(0, totalBoxes);
+    totalKgs = Math.max(0, totalKgs);
     
-//     await db.insert(stock).values(
-//       ensureTenantInsert({
-//         tenantId,
-//         itemId: item.id,
-//         quantityInCrates: totalCrates.toFixed(2),
-//         quantityInBoxes: totalBoxes.toFixed(2),
-//         quantityInKgs: totalKgs.toFixed(2)
-//       }, tenantId)
-//     );
-//   }
+    await db.insert(stock).values(
+      ensureTenantInsert({
+        tenantId,
+        itemId: item.id,
+        quantityInCrates: totalCrates.toFixed(2),
+        quantityInBoxes: totalBoxes.toFixed(2),
+        quantityInKgs: totalKgs.toFixed(2)
+      }, tenantId)
+    );
+  }
   
-//   // Create cashbook entries from cash transactions
-//   let cashBalance = 0;
-//   const cashTransactions = [];
+  // Create cashbook entries from cash transactions
+  let cashBalance = 0;
+  const cashTransactions = [];
   
-//   // Add cash sales
-//   for (const invoice of createdSalesInvoices) {
-//     if (invoice.paidAmount > 0 && Math.random() < 0.6) { // 60% cash sales
-//       const amount = invoice.paidAmount * 0.7; // 70% of payment in cash
-//       cashBalance += amount;
-//       cashTransactions.push({
-//         date: invoice.invoiceDate,
-//         description: `Cash sales - ${invoice.invoiceNumber}`,
-//         inflow: amount.toFixed(2),
-//         outflow: "0.00",
-//         balance: cashBalance.toFixed(2),
-//         referenceType: 'Sales Invoice',
-//         referenceId: invoice.id
-//       });
-//     }
-//   }
+  // Add cash sales
+  for (const invoice of createdSalesInvoices) {
+    if (invoice.paidAmount > 0 && Math.random() < 0.6) { // 60% cash sales
+      const amount = invoice.paidAmount * 0.7; // 70% of payment in cash
+      cashBalance += amount;
+      cashTransactions.push({
+        date: invoice.invoiceDate,
+        description: `Cash sales - ${invoice.invoiceNumber}`,
+        inflow: amount.toFixed(2),
+        outflow: "0.00",
+        balance: cashBalance.toFixed(2),
+        referenceType: 'Sales Invoice',
+        referenceId: invoice.id
+      });
+    }
+  }
   
-//   // Add cash expenses
-//   for (let i = 0; i < Math.floor(vol.expenses * 0.6); i++) {
-//     const amount = Math.random() * 3000 + 500;
-//     cashBalance -= amount;
-//     const date = new Date(Date.now() - Math.random() * 25 * 24 * 60 * 60 * 1000);
-//     cashTransactions.push({
-//       date,
-//       description: `Cash expense - ${EXPENSE_CATEGORIES[Math.floor(Math.random() * EXPENSE_CATEGORIES.length)]}`,
-//       inflow: "0.00",
-//       outflow: amount.toFixed(2),
-//       balance: cashBalance.toFixed(2),
-//       referenceType: 'Expense',
-//       referenceId: null
-//     });
-//   }
+  // Add cash expenses
+  for (let i = 0; i < Math.floor(vol.expenses * 0.6); i++) {
+    const amount = Math.random() * 3000 + 500;
+    cashBalance -= amount;
+    const date = new Date(Date.now() - Math.random() * 25 * 24 * 60 * 60 * 1000);
+    cashTransactions.push({
+      date,
+      description: `Cash expense - ${EXPENSE_CATEGORIES[Math.floor(Math.random() * EXPENSE_CATEGORIES.length)]}`,
+      inflow: "0.00",
+      outflow: amount.toFixed(2),
+      balance: cashBalance.toFixed(2),
+      referenceType: 'Expense',
+      referenceId: null
+    });
+  }
   
-//   // Sort and insert cashbook entries
-//   cashTransactions.sort((a, b) => a.date.getTime() - b.date.getTime());
-//   for (const transaction of cashTransactions) {
-//     await db.insert(cashbook).values(
-//       ensureTenantInsert({
-//         tenantId,
-//         date: transaction.date,
-//         description: transaction.description,
-//         inflow: transaction.inflow,
-//         outflow: transaction.outflow,
-//         balance: transaction.balance,
-//         referenceType: transaction.referenceType,
-//         referenceId: transaction.referenceId
-//       }, tenantId)
-//     );
-//   }
+  // Sort and insert cashbook entries
+  cashTransactions.sort((a, b) => a.date.getTime() - b.date.getTime());
+  for (const transaction of cashTransactions) {
+    await db.insert(cashbook).values(
+      ensureTenantInsert({
+        tenantId,
+        date: transaction.date,
+        description: transaction.description,
+        inflow: transaction.inflow,
+        outflow: transaction.outflow,
+        balance: transaction.balance,
+        referenceType: transaction.referenceType,
+        referenceId: transaction.referenceId
+      }, tenantId)
+    );
+  }
   
-//   // Create bankbook entries for each bank account
-//   for (const bankAccount of bankAccountIds) {
-//     let bankBalance = 50000; // Starting balance
-//     const bankTransactions = [];
+  // Create bankbook entries for each bank account
+  for (const bankAccount of bankAccountIds) {
+    let bankBalance = 50000; // Starting balance
+    const bankTransactions = [];
     
-//     // Add bank payments
-//     for (const invoice of createdPurchaseInvoices) {
-//       if (invoice.paidAmount > 0 && Math.random() < 0.4) { // 40% bank payments
-//         const amount = invoice.paidAmount * 0.8; // 80% of payment via bank
-//         bankBalance -= amount;
-//         bankTransactions.push({
-//           date: new Date(invoice.invoiceDate.getTime() + Math.random() * 3 * 24 * 60 * 60 * 1000),
-//           description: `Payment to vendor - ${invoice.invoiceNumber}`,
-//           debit: "0.00",
-//           credit: amount.toFixed(2),
-//           balance: bankBalance.toFixed(2),
-//           referenceType: 'Payment',
-//           referenceId: invoice.id
-//         });
-//       }
-//     }
+    // Add bank payments
+    for (const invoice of createdPurchaseInvoices) {
+      if (invoice.paidAmount > 0 && Math.random() < 0.4) { // 40% bank payments
+        const amount = invoice.paidAmount * 0.8; // 80% of payment via bank
+        bankBalance -= amount;
+        bankTransactions.push({
+          date: new Date(invoice.invoiceDate.getTime() + Math.random() * 3 * 24 * 60 * 60 * 1000),
+          description: `Payment to vendor - ${invoice.invoiceNumber}`,
+          debit: "0.00",
+          credit: amount.toFixed(2),
+          balance: bankBalance.toFixed(2),
+          referenceType: 'Payment',
+          referenceId: invoice.id
+        });
+      }
+    }
     
-//     // Sort and insert bankbook entries
-//     bankTransactions.sort((a, b) => a.date.getTime() - b.date.getTime());
-//     for (const transaction of bankTransactions) {
-//       await db.insert(bankbook).values(
-//         ensureTenantInsert({
-//           tenantId,
-//           bankAccountId: bankAccount.id,
-//           date: transaction.date,
-//           description: transaction.description,
-//           debit: transaction.debit,
-//           credit: transaction.credit,
-//           balance: transaction.balance,
-//           referenceType: transaction.referenceType,
-//           referenceId: transaction.referenceId
-//         }, tenantId)
-//       );
-//     }
-//   }
+    // Sort and insert bankbook entries
+    bankTransactions.sort((a, b) => a.date.getTime() - b.date.getTime());
+    for (const transaction of bankTransactions) {
+      await db.insert(bankbook).values(
+        ensureTenantInsert({
+          tenantId,
+          bankAccountId: bankAccount.id,
+          date: transaction.date,
+          description: transaction.description,
+          debit: transaction.debit,
+          credit: transaction.credit,
+          balance: transaction.balance,
+          referenceType: transaction.referenceType,
+          referenceId: transaction.referenceId
+        }, tenantId)
+      );
+    }
+  }
   
-//   console.log(`   ✅ Created ${vol.purchases} purchase invoices with items and payments`);
-//   console.log(`   ✅ Created ${vol.sales} sales invoices with items and payments`);
-//   console.log(`   ✅ Created ${vol.expenses} expense entries`);
-//   console.log(`   ✅ Created ${vol.crates} crate transactions`);
-//   console.log(`   ✅ Created stock movements and current stock levels`);
-//   console.log(`   ✅ Created cashbook and bankbook entries`);
-// }
+  console.log(`   ✅ Created ${vol.purchases} purchase invoices with items and payments`);
+  console.log(`   ✅ Created ${vol.sales} sales invoices with items and payments`);
+  console.log(`   ✅ Created ${vol.expenses} expense entries`);
+  console.log(`   ✅ Created ${vol.crates} crate transactions`);
+  console.log(`   ✅ Created stock movements and current stock levels`);
+  console.log(`   ✅ Created cashbook and bankbook entries`);
+}
 
 async function seedTenantData() {
   console.log('🌱 Starting comprehensive tenant data seeding...\n');
@@ -887,29 +887,29 @@ async function seedTenantData() {
       const users = await createTenantUsers(tenantId, config);
       console.log(`   ✅ Created ${users.length} users`);
       
-      // // Create vendors
-      // const vendors = await createTenantVendors(tenantId, config.scenario);
-      // console.log(`   ✅ Created ${vendors.length} vendors`);
+      // Create vendors
+      const vendors = await createTenantVendors(tenantId, config.scenario);
+      console.log(`   ✅ Created ${vendors.length} vendors`);
       
-      // // Create items
-      // const items = await createTenantItems(tenantId, config.scenario);
-      // console.log(`   ✅ Created ${items.length} items`);
+      // Create items
+      const items = await createTenantItems(tenantId, config.scenario);
+      console.log(`   ✅ Created ${items.length} items`);
       
-      // // Create bank accounts
-      // const bankAccounts = await createTenantBankAccounts(tenantId, config.scenario);
-      // console.log(`   ✅ Created ${bankAccounts.length} bank accounts`);
+      // Create bank accounts
+      const bankAccounts = await createTenantBankAccounts(tenantId, config.scenario);
+      console.log(`   ✅ Created ${bankAccounts.length} bank accounts`);
       
-      // // Create retailers
-      // const retailers = await createTenantRetailers(tenantId, config.scenario);
-      // console.log(`   ✅ Created ${retailers.length} retailers`);
+      // Create retailers
+      const retailers = await createTenantRetailers(tenantId, config.scenario);
+      console.log(`   ✅ Created ${retailers.length} retailers`);
       
-      // // Create expense categories
-      // const expenseCategories = await createTenantExpenseCategories(tenantId);
-      // console.log(`   ✅ Created ${expenseCategories.length} expense categories`);
+      // Create expense categories
+      const expenseCategories = await createTenantExpenseCategories(tenantId);
+      console.log(`   ✅ Created ${expenseCategories.length} expense categories`);
       
-      // // Create comprehensive transactional data
-      // await createTransactionalData(tenantId, config.scenario, vendors, items, bankAccounts, retailers, expenseCategories);
-      // console.log(`   ✅ Created comprehensive transactional data`);
+      // Create comprehensive transactional data
+      await createTransactionalData(tenantId, config.scenario, vendors, items, bankAccounts, retailers, expenseCategories);
+      console.log(`   ✅ Created comprehensive transactional data`);
       
       console.log(`   🎉 Completed setup for ${config.name}\n`);
     }
