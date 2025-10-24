@@ -9,6 +9,9 @@ import { type AuthenticatedRequest, NotFoundError, ValidationError, BadRequestEr
 import { invoiceGenerator } from '../../services/pdf';
 import { TenantModel } from '../tenants/model';
 
+// ✅ Define proper types for z.infer
+type SalesInvoiceWithDetails = z.infer<typeof schema.SalesInvoiceWithDetails>;
+
 const salesInvoiceValidation = {
   createSalesInvoice: z.object({
     invoice: insertSalesInvoiceSchema,
@@ -57,10 +60,10 @@ export class SalesInvoiceController extends BaseController {
     res.json(salesInvoices);
   }
 
-  async getSalesInvoice(req: AuthenticatedRequest, res: Response) {
+  async getSalesInvoice(req: AuthenticatedRequest<{}, {}, {}, { id: string }>, res: Response) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
-    const { id } = req.params;
+    const { id } = (req as any).params;
     
     if (!id) throw new BadRequestError('Sales invoice ID is required');
 
@@ -78,9 +81,9 @@ export class SalesInvoiceController extends BaseController {
     
     // Inject tenantId into invoice, items, and crateTransaction before validation
     const requestData = {
-      invoice: { ...req.body.invoice, tenantId },
-      items: req.body.items?.map((item: any) => ({ ...item, tenantId })) || [],
-      crateTransaction: req.body.crateTransaction ? { ...req.body.crateTransaction, tenantId } : undefined,
+      invoice: { ...(req as any).body.invoice, tenantId },
+      items: (req as any).body.items?.map((item: any) => ({ ...item, tenantId })) || [],
+      crateTransaction: (req as any).body.crateTransaction ? { ...(req as any).body.crateTransaction, tenantId } : undefined,
     };
     
     const validatedData = this.validateZodSchema(salesInvoiceValidation.createSalesInvoice, requestData);
@@ -110,15 +113,15 @@ export class SalesInvoiceController extends BaseController {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
-    const { id } = req.params;
+    const { id } = (req as any).params;
     if (!id) throw new BadRequestError('Sales invoice ID is required');
     this.validateUUID(id, 'Sales invoice ID');
     
     // Inject tenantId into invoice, items, and crateTransaction before validation
     const requestData = {
-      invoice: { ...req.body.invoice, tenantId },
-      items: req.body.items?.map((item: any) => ({ ...item, tenantId })) || [],
-      crateTransaction: req.body.crateTransaction ? { ...req.body.crateTransaction, tenantId } : undefined,
+      invoice: { ...(req as any).body.invoice, tenantId },
+      items: (req as any).body.items?.map((item: any) => ({ ...item, tenantId })) || [],
+      crateTransaction: (req as any).body.crateTransaction ? { ...(req as any).body.crateTransaction, tenantId } : undefined,
     };
     
     const validatedData = this.validateZodSchema(salesInvoiceValidation.updateSalesInvoice, requestData);
@@ -147,7 +150,7 @@ export class SalesInvoiceController extends BaseController {
   async markSalesInvoiceAsPaid(req: AuthenticatedRequest, res: Response) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
-    const { id } = req.params;
+    const { id } = (req as any).params;
     
     if (!id) throw new BadRequestError('Sales invoice ID is required');
     this.validateUUID(id, 'Sales invoice ID');
@@ -161,7 +164,7 @@ export class SalesInvoiceController extends BaseController {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
-    const validationResult = salesInvoiceValidation.getSalesInvoicesPaginated.safeParse(req.query);
+    const validationResult = salesInvoiceValidation.getSalesInvoicesPaginated.safeParse((req as any).query);
     if (!validationResult.success) {
       throw new ValidationError('Invalid query parameters', validationResult.error);
     }
@@ -193,7 +196,7 @@ export class SalesInvoiceController extends BaseController {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
-    const { id: invoiceId } = this.validateZodSchema(shareInvoiceParamsSchema, req.params);
+    const { id: invoiceId } = this.validateZodSchema(shareInvoiceParamsSchema, (req as any).params);
     
     const shareLink = await this.salesInvoiceModel.createShareLink(tenantId, invoiceId);
     
@@ -201,7 +204,7 @@ export class SalesInvoiceController extends BaseController {
       success: true,
       data: {
         shareLink,
-        publicUrl: `${req.protocol}://${req.get('host')}/api/public/invoices/${shareLink.token}`
+        publicUrl: `${(req as any).protocol}://${(req as any).get('host')}/api/public/invoices/${shareLink.token}`
       }
     });
   }
@@ -210,14 +213,14 @@ export class SalesInvoiceController extends BaseController {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
 
-    const { id } = req.params;
+    const { id } = (req as any).params;
     if (!id) throw new BadRequestError('Sales invoice ID is required');
     this.validateUUID(id, 'Sales Invoice ID');
 
     // Fetch invoice to validate existence and status
     const invoice = await this.wrapDatabaseOperation(() =>
       this.salesInvoiceModel.getSalesInvoice(tenantId, id)
-    );
+    ) as SalesInvoiceWithDetails;
     
     if (!invoice) {
       throw new NotFoundError('Sales invoice not found');
@@ -235,7 +238,7 @@ export class SalesInvoiceController extends BaseController {
       // Race condition: re-fetch to determine if invoice was deleted or status changed
       const invoiceCheck = await this.wrapDatabaseOperation(() =>
         this.salesInvoiceModel.getSalesInvoice(tenantId, id)
-      );
+      ) as SalesInvoiceWithDetails;
       
       if (invoiceCheck && invoiceCheck.status !== INVOICE_STATUS.UNPAID) {
         throw new BadRequestError('Cannot delete a paid or partially paid invoice. Only unpaid invoices can be deleted.');
@@ -251,13 +254,13 @@ export class SalesInvoiceController extends BaseController {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
 
-    const { id } = req.params;
+    const { id } = (req as any).params;
     if (!id) throw new BadRequestError('Sales invoice ID is required');
     this.validateUUID(id, 'Sales invoice ID');
 
     const salesInvoice = await this.wrapDatabaseOperation(() =>
       this.salesInvoiceModel.getSalesInvoice(tenantId, id)
-    );
+    ) as SalesInvoiceWithDetails;
     this.ensureResourceExists(salesInvoice, 'Sales invoice');
 
     const tenant = await TenantModel.getTenant(tenantId);

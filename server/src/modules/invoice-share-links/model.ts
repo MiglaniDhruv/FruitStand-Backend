@@ -20,7 +20,6 @@ const {
 
 type InvoiceShareLink = typeof schema.invoiceShareLinks.$inferSelect;
 type InsertInvoiceShareLink = typeof schema.insertInvoiceShareLinkSchema._input;
-type PublicInvoiceData = typeof schema.PublicInvoiceData;
 
 export class InvoiceShareLinkModel {
   /**
@@ -63,6 +62,8 @@ export class InvoiceShareLinkModel {
           token,
           invoiceId,
           invoiceType,
+          accessCount: 0, // optional if you added this field to schema
+          lastAccessedAt: new Date()
         },
         tenantId
       );

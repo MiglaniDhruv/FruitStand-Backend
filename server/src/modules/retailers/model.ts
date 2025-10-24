@@ -1,4 +1,4 @@
-import { eq, desc, asc, and, or, ilike, count, inArray, sum } from 'drizzle-orm';
+import { eq, desc, asc, and, or, ilike, count, inArray, sum, sql } from 'drizzle-orm';
 import { db } from '../../../db';
 import schema from '../../../shared/schema.js';
 import { z } from 'zod';
@@ -15,6 +15,7 @@ const {
 type Retailer = typeof schema.retailers.$inferSelect;
 type InsertRetailer = typeof schema.insertRetailerSchema._input;
 type PaginationOptions = typeof schema.PaginationOptions;
+
 export function PaginatedResult<T extends z.ZodTypeAny>(dataSchema: T) {
   return z.object({
     data: z.array(dataSchema),
@@ -28,6 +29,10 @@ export function PaginatedResult<T extends z.ZodTypeAny>(dataSchema: T) {
     }),
   });
 }
+
+// Define the paginated retailer type
+type PaginatedRetailers = z.infer<ReturnType<typeof PaginatedResult<typeof schema.retailers>>>;
+
 import { normalizePaginationOptions, buildPaginationMetadata, withTenantPagination } from '../../utils/pagination';
 import { withTenant, ensureTenantInsert } from '../../utils/tenant-scope';
 import { ValidationError, AppError, NotFoundError } from '../../types';
@@ -92,7 +97,7 @@ export class RetailerModel {
     try {
       const [retailer] = await db
         .update(retailers)
-        .set(updateData)
+        .set(updateData as any)
         .where(withTenant(retailers, tenantId, eq(retailers.id, id)))
         .returning();
       return retailer || undefined;
@@ -178,7 +183,7 @@ export class RetailerModel {
   async getRetailersPaginated(tenantId: string, options?: PaginationOptions & {
     search?: string;
     status?: string;
-  }): Promise<PaginatedResult<Retailer>> {
+  }): Promise<PaginatedRetailers> {
     const { page, limit, offset, tenantCondition } = withTenantPagination(retailers, tenantId, options || {});
     
     // Build WHERE conditions array starting with tenant filtering
@@ -230,7 +235,7 @@ export class RetailerModel {
     
     const pagination = buildPaginationMetadata(page, limit, total);
     
-    return { data: retailersData, pagination };
+    return { data: retailersData, pagination } as PaginatedRetailers;
   }
 
   async getRetailerStats(tenantId: string): Promise<{ totalRetailers: number; totalUdhaar: string; totalShortfall: string; totalCrates: number }> {
@@ -269,10 +274,10 @@ export class RetailerModel {
       // Calculate new favourite status
       const newStatus = !currentRetailer.isFavourite;
 
-      // Update the retailer
+      // Update the retailer using sql template
       const [updatedRetailer] = await db
         .update(retailers)
-        .set({ isFavourite: newStatus })
+        .set({ isFavourite: sql`${newStatus}` } as any)
         .where(withTenant(retailers, tenantId, eq(retailers.id, id)))
         .returning();
 

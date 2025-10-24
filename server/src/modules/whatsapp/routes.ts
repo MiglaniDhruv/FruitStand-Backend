@@ -6,7 +6,6 @@ import {
   attachTenantContext, 
   requirePermission 
 } from '../../middleware/auth';
-import { PERMISSIONS } from '../../../shared/permissions.js';
 import { asyncHandler } from '../../utils/async-handler';
 
 export class WhatsAppRouter extends BaseRouter {
@@ -25,7 +24,7 @@ export class WhatsAppRouter extends BaseRouter {
       authenticateToken,
       asyncHandler(validateTenant),
       attachTenantContext,
-      asyncHandler(requirePermission([PERMISSIONS.SEND_WHATSAPP_MESSAGES])),
+      asyncHandler(requirePermission(['Admin', 'Operator'])),
       this.ah(this.whatsAppController.sendSalesInvoice)
     );
 
@@ -35,7 +34,7 @@ export class WhatsAppRouter extends BaseRouter {
       authenticateToken,
       asyncHandler(validateTenant),
       attachTenantContext,
-      asyncHandler(requirePermission([PERMISSIONS.SEND_WHATSAPP_MESSAGES])),
+      asyncHandler(requirePermission(['Admin', 'Operator'])),
       this.ah(this.whatsAppController.sendPurchaseInvoice)
     );
 
@@ -45,7 +44,7 @@ export class WhatsAppRouter extends BaseRouter {
       authenticateToken,
       asyncHandler(validateTenant),
       attachTenantContext,
-      asyncHandler(requirePermission([PERMISSIONS.SEND_WHATSAPP_MESSAGES])),
+      asyncHandler(requirePermission(['Admin', 'Operator', 'Accountant'])),
       this.ah(this.whatsAppController.sendPaymentReminder)
     );
 
@@ -55,7 +54,7 @@ export class WhatsAppRouter extends BaseRouter {
       authenticateToken,
       asyncHandler(validateTenant),
       attachTenantContext,
-      asyncHandler(requirePermission([PERMISSIONS.SEND_WHATSAPP_MESSAGES])),
+      asyncHandler(requirePermission(['Admin', 'Operator', 'Accountant'])),
       this.ah(this.whatsAppController.sendPaymentNotification)
     );
 
@@ -65,7 +64,7 @@ export class WhatsAppRouter extends BaseRouter {
       authenticateToken,
       asyncHandler(validateTenant),
       attachTenantContext,
-      asyncHandler(requirePermission([PERMISSIONS.VIEW_WHATSAPP_LOGS])),
+      asyncHandler(requirePermission(['Admin', 'Operator', 'Accountant'])),
       this.ah(this.whatsAppController.getMessageHistory)
     );
 
@@ -75,7 +74,7 @@ export class WhatsAppRouter extends BaseRouter {
       authenticateToken,
       asyncHandler(validateTenant),
       attachTenantContext,
-      asyncHandler(requirePermission([PERMISSIONS.VIEW_WHATSAPP_LOGS])),
+      asyncHandler(requirePermission(['Admin', 'Operator', 'Accountant'])),
       this.ah(this.whatsAppController.getMessagesByReference)
     );
 
@@ -85,7 +84,7 @@ export class WhatsAppRouter extends BaseRouter {
       authenticateToken,
       asyncHandler(validateTenant),
       attachTenantContext,
-      asyncHandler(requirePermission([PERMISSIONS.SEND_WHATSAPP_MESSAGES])),
+      asyncHandler(requirePermission(['Admin', 'Operator'])),
       this.ah(this.whatsAppController.previewMessage)
     );
 
@@ -101,7 +100,7 @@ export class WhatsAppRouter extends BaseRouter {
       authenticateToken,
       asyncHandler(validateTenant),
       attachTenantContext,
-      asyncHandler(requirePermission([PERMISSIONS.VIEW_WHATSAPP_LOGS])),
+      asyncHandler(requirePermission(['Admin', 'Operator', 'Accountant'])),
       this.ah(this.whatsAppController.getCreditBalance)
     );
   }

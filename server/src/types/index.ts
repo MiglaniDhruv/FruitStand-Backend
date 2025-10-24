@@ -24,6 +24,18 @@ export enum UserRole {
   ACCOUNTANT = "Accountant",
 }
 
+
+export interface BankAccount1 {
+  id: string;
+  name: string;
+  accountNumber: string;
+  bankName: string;
+  balance: number;
+  tenantId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 // Authenticated request with generics for Express
 export interface AuthenticatedRequest<
   P = any,

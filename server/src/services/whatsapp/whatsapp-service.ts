@@ -15,6 +15,14 @@ import { PaymentModel } from '../../modules/payments/model.js';
 import { SalesPaymentModel } from '../../modules/sales-payments/model.js';
 import { InvoiceShareLinkModel } from '../../modules/invoice-share-links/model.js';
 
+// Add Tenant type import - adjust path as needed
+type Tenant = {
+  id: string;
+  name: string;
+  // Add other tenant properties as needed
+  [key: string]: any;
+};
+
 interface CreditCheck {
   allowed: boolean;
   reason?: string;
@@ -116,9 +124,9 @@ export class WhatsAppService {
       throw new Error(`Template not configured for message type: ${messageType}`);
     }
 
-    // Step 4: Create initial message log
+    // Step 4: Create initial message log (removed properties that don't exist in the type)
     const messageLog = await WhatsAppMessageModel.createMessage(tenantId, {
-      tenantId, // Add tenantId as it's required by the schema
+      tenantId,
       recipientType,
       recipientId,
       recipientPhone: formattedPhone,
@@ -127,9 +135,7 @@ export class WhatsAppService {
       referenceId,
       referenceNumber,
       templateId: templateContentSid,
-      status: 'pending',
-      templateVariables: JSON.stringify(templateVariables),
-      costCurrency: null
+      templateVariables: JSON.stringify(templateVariables)
     });
 
     try {
@@ -148,7 +154,6 @@ export class WhatsAppService {
         messageLog.id,
         {
           twilioMessageSid: twilioResponse.sid,
-          status: 'sent',
           sentAt: new Date()
         }
       );
@@ -191,7 +196,6 @@ export class WhatsAppService {
         tenantId,
         messageLog.id,
         {
-          status: 'failed',
           errorCode: twilioError.code?.toString() || 'UNKNOWN',
           errorMessage: twilioError.message || 'Failed to send message'
         }
@@ -205,257 +209,255 @@ export class WhatsAppService {
   /**
    * Send sales invoice to retailer
    */
-async sendSalesInvoice(tenantId: string, invoiceId: string): Promise<any> {
-  // Check tenant credits early
-  const creditCheck = await this.checkTenantCredits(tenantId);
-  if (!creditCheck.allowed) {
-    throw new Error(creditCheck.reason || 'Insufficient WhatsApp credits');
+  async sendSalesInvoice(tenantId: string, invoiceId: string): Promise<any> {
+    // Check tenant credits early
+    const creditCheck = await this.checkTenantCredits(tenantId);
+    if (!creditCheck.allowed) {
+      throw new Error(creditCheck.reason || 'Insufficient WhatsApp credits');
+    }
+
+    // Fetch invoice
+    const salesInvoiceModel = new SalesInvoiceModel();
+    const invoice: any = await salesInvoiceModel.getSalesInvoice(tenantId, invoiceId);
+
+    if (!invoice) {
+      throw new Error('Sales invoice not found');
+    }
+
+    const retailer = invoice.retailer;
+    if (!retailer) {
+      throw new Error('Retailer information not found for invoice');
+    }
+
+    // Validate phone
+    if (!retailer.phone || !isValidPhone(retailer.phone)) {
+      throw new Error(`Invalid phone number for retailer: ${retailer.phone ?? 'not provided'}`);
+    }
+
+    // Fetch tenant
+    let tenant: Tenant | null = null;
+    try {
+      tenant = await TenantModel.getTenant(tenantId);
+    } catch (error) {
+      console.warn(`Warning: Failed to fetch tenant details for ${tenantId}:`, error);
+    }
+
+    // Create or get share link
+    const invoiceToken = await this.createInvoiceShareLink(tenantId, invoiceId, 'sales');
+    if (!invoiceToken) {
+      throw new Error('Unable to generate invoice share link. Please ensure the invoice is accessible.');
+    }
+
+    // Build template variables
+    const templateVariables = buildSalesInvoiceVariables(invoice, retailer, tenant, invoiceToken);
+
+    // Send message
+    return this.sendMessage({
+      tenantId,
+      recipientPhone: retailer.phone,
+      messageType: 'sales_invoice',
+      templateVariables,
+      referenceType: 'SALES_INVOICE',
+      referenceId: invoiceId,
+      referenceNumber: invoice.invoiceNumber,
+      recipientType: 'retailer',
+      recipientId: retailer.id
+    });
   }
 
-  // Fetch invoice
-  const salesInvoiceModel = new SalesInvoiceModel();
-  const invoice = await salesInvoiceModel.getSalesInvoice(tenantId, invoiceId);
+  async sendPurchaseInvoice(tenantId: string, invoiceId: string): Promise<any> {
+    // Check tenant credits early
+    const creditCheck = await this.checkTenantCredits(tenantId);
+    if (!creditCheck.allowed) {
+      throw new Error(creditCheck.reason || 'Insufficient WhatsApp credits');
+    }
 
-  if (!invoice) {
-    throw new Error('Sales invoice not found');
+    // Fetch invoice
+    const purchaseInvoiceModel = new PurchaseInvoiceModel();
+    const invoice: any = await purchaseInvoiceModel.getPurchaseInvoice(tenantId, invoiceId);
+
+    if (!invoice) {
+      throw new Error('Purchase invoice not found');
+    }
+
+    const vendor = invoice.vendor;
+    if (!vendor) {
+      throw new Error('Vendor information not found for invoice');
+    }
+
+    // Validate phone
+    if (!vendor.phone || !isValidPhone(vendor.phone)) {
+      throw new Error(`Invalid phone number for vendor: ${vendor.phone ?? 'not provided'}`);
+    }
+
+    // Fetch tenant
+    let tenant: Tenant | null = null;
+    try {
+      tenant = await TenantModel.getTenant(tenantId);
+    } catch (error) {
+      console.warn(`Warning: Failed to fetch tenant details for ${tenantId}:`, error);
+    }
+
+    // Create or get share link
+    const invoiceToken = await this.createInvoiceShareLink(tenantId, invoiceId, 'purchase');
+    if (!invoiceToken) {
+      throw new Error('Unable to generate invoice share link. Please ensure the invoice is accessible.');
+    }
+
+    // Build template variables
+    const templateVariables = buildPurchaseInvoiceVariables(invoice, vendor, tenant, invoiceToken);
+
+    // Send message
+    return this.sendMessage({
+      tenantId,
+      recipientPhone: vendor.phone,
+      messageType: 'purchase_invoice',
+      templateVariables,
+      referenceType: 'PURCHASE_INVOICE',
+      referenceId: invoiceId,
+      referenceNumber: invoice.invoiceNumber,
+      recipientType: 'vendor',
+      recipientId: vendor.id
+    });
   }
-
-  const retailer = invoice.retailer;
-  if (!retailer) {
-    throw new Error('Retailer information not found for invoice');
-  }
-
-  // Validate phone
-  if (!retailer.phone || !isValidPhone(retailer.phone)) {
-    throw new Error(`Invalid phone number for retailer: ${retailer.phone ?? 'not provided'}`);
-  }
-
-  // Fetch tenant
-  let tenant: Tenant | null = null;
-  try {
-    tenant = await TenantModel.getTenant(tenantId);
-  } catch (error) {
-    console.warn(`Warning: Failed to fetch tenant details for ${tenantId}:`, error);
-  }
-
-  // Create or get share link
-  const invoiceToken = await this.createInvoiceShareLink(tenantId, invoiceId, 'sales');
-  if (!invoiceToken) {
-    throw new Error('Unable to generate invoice share link. Please ensure the invoice is accessible.');
-  }
-
-  // Build template variables
-  const templateVariables = buildSalesInvoiceVariables(invoice, retailer, tenant, invoiceToken);
-
-  // Send message
-  return this.sendMessage({
-    tenantId,
-    recipientPhone: retailer.phone,
-    messageType: 'sales_invoice',
-    templateVariables,
-    referenceType: 'SALES_INVOICE',
-    referenceId: invoiceId,
-    referenceNumber: invoice.invoiceNumber,
-    recipientType: 'retailer',
-    recipientId: retailer.id
-  });
-}
-
-async sendPurchaseInvoice(tenantId: string, invoiceId: string): Promise<any> {
-  // Check tenant credits early
-  const creditCheck = await this.checkTenantCredits(tenantId);
-  if (!creditCheck.allowed) {
-    throw new Error(creditCheck.reason || 'Insufficient WhatsApp credits');
-  }
-
-  // Fetch invoice
-  const purchaseInvoiceModel = new PurchaseInvoiceModel();
-  const invoice = await purchaseInvoiceModel.getPurchaseInvoice(tenantId, invoiceId);
-
-  if (!invoice) {
-    throw new Error('Purchase invoice not found');
-  }
-
-  const vendor = invoice.vendor;
-  if (!vendor) {
-    throw new Error('Vendor information not found for invoice');
-  }
-
-  // Validate phone
-  if (!vendor.phone || !isValidPhone(vendor.phone)) {
-    throw new Error(`Invalid phone number for vendor: ${vendor.phone ?? 'not provided'}`);
-  }
-
-  // Fetch tenant
-  let tenant: Tenant | null = null;
-  try {
-    tenant = await TenantModel.getTenant(tenantId);
-  } catch (error) {
-    console.warn(`Warning: Failed to fetch tenant details for ${tenantId}:`, error);
-  }
-
-  // Create or get share link
-  const invoiceToken = await this.createInvoiceShareLink(tenantId, invoiceId, 'purchase');
-  if (!invoiceToken) {
-    throw new Error('Unable to generate invoice share link. Please ensure the invoice is accessible.');
-  }
-
-  // Build template variables
-  const templateVariables = buildPurchaseInvoiceVariables(invoice, vendor, tenant, invoiceToken);
-
-  // Send message
-  return this.sendMessage({
-    tenantId,
-    recipientPhone: vendor.phone,
-    messageType: 'purchase_invoice',
-    templateVariables,
-    referenceType: 'PURCHASE_INVOICE',
-    referenceId: invoiceId,
-    referenceNumber: invoice.invoiceNumber,
-    recipientType: 'vendor',
-    recipientId: vendor.id
-  });
-}
-
 
   /**
    * Send payment reminder
    */
   async sendPaymentReminder(
-  tenantId: string,
-  invoiceId: string,
-  invoiceType: 'sales' | 'purchase'
-): Promise<any> {
-  // Check tenant credits
-  const creditCheck = await this.checkTenantCredits(tenantId);
-  if (!creditCheck.allowed) {
-    throw new Error(creditCheck.reason || 'Insufficient WhatsApp credits');
+    tenantId: string,
+    invoiceId: string,
+    invoiceType: 'sales' | 'purchase'
+  ): Promise<any> {
+    // Check tenant credits
+    const creditCheck = await this.checkTenantCredits(tenantId);
+    if (!creditCheck.allowed) {
+      throw new Error(creditCheck.reason || 'Insufficient WhatsApp credits');
+    }
+
+    // Fetch invoice and recipient
+    let invoice: any;
+    let recipient: any;
+    let recipientType: 'vendor' | 'retailer';
+
+    if (invoiceType === 'sales') {
+      const salesInvoiceModel = new SalesInvoiceModel();
+      invoice = await salesInvoiceModel.getSalesInvoice(tenantId, invoiceId);
+      recipient = invoice?.retailer;
+      recipientType = 'retailer';
+    } else {
+      const purchaseInvoiceModel = new PurchaseInvoiceModel();
+      invoice = await purchaseInvoiceModel.getPurchaseInvoice(tenantId, invoiceId);
+      recipient = invoice?.vendor;
+      recipientType = 'vendor';
+    }
+
+    if (!invoice) throw new Error(`${invoiceType} invoice not found`);
+    if (!recipient) throw new Error(`${recipientType} information not found for invoice`);
+
+    // Validate recipient phone
+    if (!recipient.phone || !isValidPhone(recipient.phone)) {
+      throw new Error(`Invalid phone number for ${recipientType}: ${recipient.phone ?? 'not provided'}`);
+    }
+
+    // Fetch tenant details safely
+    let tenant: Tenant | null = null;
+    try {
+      tenant = await TenantModel.getTenant(tenantId);
+    } catch (error) {
+      console.warn(`Warning: Failed to fetch tenant details for ${tenantId}:`, error);
+    }
+
+    // Create or get share link
+    const shareInvoiceType = invoiceType === 'sales' ? 'sales' : 'purchase';
+    const invoiceToken = await this.createInvoiceShareLink(tenantId, invoiceId, shareInvoiceType);
+    if (!invoiceToken) throw new Error('Unable to generate invoice share link');
+
+    // Build template variables
+    const templateVariables = buildPaymentReminderVariables(invoice, recipient, recipientType, tenant, invoiceToken);
+
+    // Send message
+    return this.sendMessage({
+      tenantId,
+      recipientPhone: recipient.phone,
+      messageType: 'payment_reminder',
+      templateVariables,
+      referenceType: invoiceType === 'sales' ? 'SALES_INVOICE' : 'PURCHASE_INVOICE',
+      referenceId: invoiceId,
+      referenceNumber: invoice.invoiceNumber,
+      recipientType,
+      recipientId: recipient.id
+    });
   }
 
-  // Fetch invoice and recipient
-  let invoice: any;
-  let recipient: any;
-  let recipientType: 'vendor' | 'retailer';
+  async sendPaymentNotification(
+    tenantId: string,
+    paymentId: string,
+    paymentType: 'sales' | 'purchase'
+  ): Promise<any> {
+    // Check tenant credits
+    const creditCheck = await this.checkTenantCredits(tenantId);
+    if (!creditCheck.allowed) {
+      throw new Error(creditCheck.reason || 'Insufficient WhatsApp credits');
+    }
 
-  if (invoiceType === 'sales') {
-    const salesInvoiceModel = new SalesInvoiceModel();
-    invoice = await salesInvoiceModel.getSalesInvoice(tenantId, invoiceId);
-    recipient = invoice?.retailer;
-    recipientType = 'retailer';
-  } else {
-    const purchaseInvoiceModel = new PurchaseInvoiceModel();
-    invoice = await purchaseInvoiceModel.getPurchaseInvoice(tenantId, invoiceId);
-    recipient = invoice?.vendor;
-    recipientType = 'vendor';
+    // Fetch payments
+    let payments: any[];
+    let recipientType: 'vendor' | 'retailer';
+
+    if (paymentType === 'sales') {
+      const salesPaymentModel = new SalesPaymentModel();
+      payments = await salesPaymentModel.getSalesPayments(tenantId, true);
+      recipientType = 'retailer';
+    } else {
+      const paymentModel = new PaymentModel();
+      payments = await paymentModel.getPayments(tenantId);
+      recipientType = 'vendor';
+    }
+
+    const payment = payments.find(p => p.id === paymentId);
+    if (!payment) throw new Error(`${paymentType} payment not found`);
+
+    const invoice = payment.invoice;
+    const recipient = paymentType === 'sales' ? payment.retailer : payment.vendor;
+
+    if (!invoice) throw new Error('Invoice information not found for payment');
+    if (!recipient) throw new Error(`${recipientType} information not found for payment`);
+
+    // Validate recipient phone
+    if (!recipient.phone || !isValidPhone(recipient.phone)) {
+      throw new Error(`Invalid phone number for ${recipientType}: ${recipient.phone ?? 'not provided'}`);
+    }
+
+    // Fetch tenant details safely
+    let tenant: Tenant | null = null;
+    try {
+      tenant = await TenantModel.getTenant(tenantId);
+    } catch (error) {
+      console.warn(`Warning: Failed to fetch tenant details for ${tenantId}:`, error);
+    }
+
+    // Create or get share link
+    const shareInvoiceType = paymentType === 'sales' ? 'sales' : 'purchase';
+    const invoiceToken = await this.createInvoiceShareLink(tenantId, invoice.id, shareInvoiceType);
+    if (!invoiceToken) throw new Error('Unable to generate invoice share link');
+
+    // Build template variables
+    const templateVariables = buildPaymentNotificationVariables(payment, invoice, recipient, tenant, invoiceToken);
+
+    // Send message
+    return this.sendMessage({
+      tenantId,
+      recipientPhone: recipient.phone,
+      messageType: 'payment_notification',
+      templateVariables,
+      referenceType: paymentType === 'sales' ? 'SALES_PAYMENT' : 'PURCHASE_PAYMENT',
+      referenceId: paymentId,
+      referenceNumber: invoice.invoiceNumber,
+      recipientType,
+      recipientId: recipient.id
+    });
   }
-
-  if (!invoice) throw new Error(`${invoiceType} invoice not found`);
-  if (!recipient) throw new Error(`${recipientType} information not found for invoice`);
-
-  // Validate recipient phone
-  if (!recipient.phone || !isValidPhone(recipient.phone)) {
-    throw new Error(`Invalid phone number for ${recipientType}: ${recipient.phone ?? 'not provided'}`);
-  }
-
-  // Fetch tenant details safely
-  let tenant: Tenant | null = null;
-  try {
-    tenant = await TenantModel.getTenant(tenantId);
-  } catch (error) {
-    console.warn(`Warning: Failed to fetch tenant details for ${tenantId}:`, error);
-  }
-
-  // Create or get share link
-  const shareInvoiceType = invoiceType === 'sales' ? 'sales' : 'purchase';
-  const invoiceToken = await this.createInvoiceShareLink(tenantId, invoiceId, shareInvoiceType);
-  if (!invoiceToken) throw new Error('Unable to generate invoice share link');
-
-  // Build template variables
-  const templateVariables = buildPaymentReminderVariables(invoice, recipient, recipientType, tenant, invoiceToken);
-
-  // Send message
-  return this.sendMessage({
-    tenantId,
-    recipientPhone: recipient.phone,
-    messageType: 'payment_reminder',
-    templateVariables,
-    referenceType: invoiceType === 'sales' ? 'SALES_INVOICE' : 'PURCHASE_INVOICE',
-    referenceId: invoiceId,
-    referenceNumber: invoice.invoiceNumber,
-    recipientType,
-    recipientId: recipient.id
-  });
-}
-
-async sendPaymentNotification(
-  tenantId: string,
-  paymentId: string,
-  paymentType: 'sales' | 'purchase'
-): Promise<any> {
-  // Check tenant credits
-  const creditCheck = await this.checkTenantCredits(tenantId);
-  if (!creditCheck.allowed) {
-    throw new Error(creditCheck.reason || 'Insufficient WhatsApp credits');
-  }
-
-  // Fetch payments
-  let payments: any[];
-  let recipientType: 'vendor' | 'retailer';
-
-  if (paymentType === 'sales') {
-    const salesPaymentModel = new SalesPaymentModel();
-    payments = await salesPaymentModel.getSalesPayments(tenantId, true);
-    recipientType = 'retailer';
-  } else {
-    const paymentModel = new PaymentModel();
-    payments = await paymentModel.getPayments(tenantId);
-    recipientType = 'vendor';
-  }
-
-  const payment = payments.find(p => p.id === paymentId);
-  if (!payment) throw new Error(`${paymentType} payment not found`);
-
-  const invoice = payment.invoice;
-  const recipient = paymentType === 'sales' ? payment.retailer : payment.vendor;
-
-  if (!invoice) throw new Error('Invoice information not found for payment');
-  if (!recipient) throw new Error(`${recipientType} information not found for payment`);
-
-  // Validate recipient phone
-  if (!recipient.phone || !isValidPhone(recipient.phone)) {
-    throw new Error(`Invalid phone number for ${recipientType}: ${recipient.phone ?? 'not provided'}`);
-  }
-
-  // Fetch tenant details safely
-  let tenant: Tenant | null = null;
-  try {
-    tenant = await TenantModel.getTenant(tenantId);
-  } catch (error) {
-    console.warn(`Warning: Failed to fetch tenant details for ${tenantId}:`, error);
-  }
-
-  // Create or get share link
-  const shareInvoiceType = paymentType === 'sales' ? 'sales' : 'purchase';
-  const invoiceToken = await this.createInvoiceShareLink(tenantId, invoice.id, shareInvoiceType);
-  if (!invoiceToken) throw new Error('Unable to generate invoice share link');
-
-  // Build template variables
-  const templateVariables = buildPaymentNotificationVariables(payment, invoice, recipient, tenant, invoiceToken);
-
-  // Send message
-  return this.sendMessage({
-    tenantId,
-    recipientPhone: recipient.phone,
-    messageType: 'payment_notification',
-    templateVariables,
-    referenceType: paymentType === 'sales' ? 'SALES_PAYMENT' : 'PURCHASE_PAYMENT',
-    referenceId: paymentId,
-    referenceNumber: invoice.invoiceNumber,
-    recipientType,
-    recipientId: recipient.id
-  });
-}
-
 }
 
 // Export singleton instance

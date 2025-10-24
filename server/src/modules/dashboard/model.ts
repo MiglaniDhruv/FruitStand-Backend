@@ -1,21 +1,61 @@
 import { eq, sum, gte, lte, inArray, desc, and, asc, sql } from 'drizzle-orm';
 import { db } from '../../../db';
 import schema from '../../../shared/schema.js';
-
-const { vendors, retailers, purchaseInvoices, salesInvoices, tenants, expenses } = schema;
-
-type DashboardKPIs = typeof schema.DashboardKPIs;
-type RecentPurchase = typeof schema.RecentPurchase;
-type RecentSale = typeof schema.RecentSale;
-type FavouriteRetailer = typeof schema.FavouriteRetailer;
-type FavouriteVendor = typeof schema.FavouriteVendor;
 import { withTenant } from '../../utils/tenant-scope';
 import { TenantModel } from '../tenants/model';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 
+const { vendors, retailers, purchaseInvoices, salesInvoices, tenants, expenses } = schema;
+
+// Define TypeScript interfaces for dashboard types
+interface DashboardKPIs {
+  todaysSales: string;
+  todaysPurchases: string;
+  totalUdhaar: string;
+  todaysExpenses: string;
+  recentPurchases: RecentPurchase[];
+  recentSales: RecentSale[];
+  favouriteRetailers: FavouriteRetailer[];
+  favouriteVendors: FavouriteVendor[];
+}
+
+interface RecentPurchase {
+  id: string;
+  invoiceNumber: string;
+  invoiceDate: string;
+  vendorName: string;
+  netAmount: string;
+  status: string;
+}
+
+interface RecentSale {
+  id: string;
+  invoiceNumber: string;
+  invoiceDate: string;
+  retailerName: string;
+  totalAmount: string;
+  status: string;
+}
+
+interface FavouriteRetailer {
+  id: string;
+  name: string;
+  phone: string;
+  udhaaarBalance: string;
+  shortfallBalance: string;
+  crateBalance: number;
+}
+
+interface FavouriteVendor {
+  id: string;
+  name: string;
+  phone: string;
+  balance: string;
+  crateBalance: number;
+}
+
 export class DashboardModel {
   async getDashboardKPIs(tenantId: string): Promise<DashboardKPIs> {
-    // Get tenant settings to retrieve timezone
     const tenant = await db.select({ settings: tenants.settings })
       .from(tenants)
       .where(eq(tenants.id, tenantId))
@@ -23,18 +63,15 @@ export class DashboardModel {
     
     const tenantTimezone = (tenant[0]?.settings as any)?.timezone || 'Asia/Kolkata';
     
-    // Calculate today's date range using tenant timezone
     const now = new Date();
     const zonedNow = toZonedTime(now, tenantTimezone);
     
-    // Create start and end of day in tenant timezone, then convert to UTC for database queries
     const startOfTodayLocal = new Date(zonedNow.getFullYear(), zonedNow.getMonth(), zonedNow.getDate(), 0, 0, 0);
     const endOfTodayLocal = new Date(zonedNow.getFullYear(), zonedNow.getMonth(), zonedNow.getDate(), 23, 59, 59);
     
     const startOfToday = fromZonedTime(startOfTodayLocal, tenantTimezone);
     const endOfToday = fromZonedTime(endOfTodayLocal, tenantTimezone);
 
-    // Run all independent queries in parallel
     const [
       todaysSalesResult,
       todaysPurchasesResult,
@@ -45,8 +82,6 @@ export class DashboardModel {
       favouriteRetailers,
       favouriteVendors
     ] = await Promise.all([
-      
-      // Get today's sales
       db.select({ total: sum(salesInvoices.totalAmount) })
         .from(salesInvoices)
         .where(withTenant(salesInvoices, tenantId, and(
@@ -54,7 +89,6 @@ export class DashboardModel {
           lte(salesInvoices.createdAt, endOfToday)
         ))),
       
-      // Get today's purchases
       db.select({ total: sum(purchaseInvoices.netAmount) })
         .from(purchaseInvoices)
         .where(withTenant(purchaseInvoices, tenantId, and(
@@ -62,12 +96,10 @@ export class DashboardModel {
           lte(purchaseInvoices.createdAt, endOfToday)
         ))),
       
-      // Get total udhaar
       db.select({ total: sum(retailers.udhaaarBalance) })
         .from(retailers)
         .where(withTenant(retailers, tenantId, eq(retailers.isActive, true))),
       
-      // Get today's expenses
       db.select({ total: sum(expenses.amount) })
         .from(expenses)
         .where(withTenant(expenses, tenantId, and(
@@ -75,14 +107,12 @@ export class DashboardModel {
           lte(expenses.paymentDate, endOfToday)
         ))),
       
-      // Get recent purchases, sales, and favourite retailers
       this.getRecentPurchases(tenantId, 5),
       this.getRecentSales(tenantId, 5),
       this.getFavouriteRetailers(tenantId, 10),
       this.getFavouriteVendors(tenantId, 10)
     ]);
 
-    // Format results
     const todaysSales = `₹${(Number(todaysSalesResult[0]?.total) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const todaysPurchases = `₹${(Number(todaysPurchasesResult[0]?.total) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const totalUdhaar = `₹${(Number(totalUdhaarResult[0]?.total) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -168,7 +198,7 @@ export class DashboardModel {
     }));
   }
 
-  async getFavouriteVendors(tenantId: string, limit: number = 10) {
+  async getFavouriteVendors(tenantId: string, limit: number = 10): Promise<FavouriteVendor[]> {
     const favouriteVendors = await db
       .select({
         id: vendors.id,
@@ -188,3 +218,4 @@ export class DashboardModel {
     }));
   }
 }
+``

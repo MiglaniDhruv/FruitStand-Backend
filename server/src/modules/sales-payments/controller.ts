@@ -4,8 +4,37 @@ import schema from '../../../shared/schema.js';
 const { insertSalesPaymentSchema } = schema;
 import { BaseController } from '../../utils/base';
 import { SalesPaymentModel } from './model';
-import { type AuthenticatedRequest, ForbiddenError, BadRequestError, NotFoundError, ValidationError } from '../../types';
+import { ForbiddenError, BadRequestError, NotFoundError, ValidationError } from '../../types';
 import { whatsAppService } from '../../services/whatsapp/index.js';
+
+// Extended Request interface that properly extends Express Request
+interface AuthenticatedRequest<
+  P = Record<string, string>,
+  ResBody = any,
+  ReqBody = any,
+  ReqQuery = Record<string, any>
+> extends Request<P, ResBody, ReqBody, ReqQuery> {
+  tenantId?: string;
+  userId?: string;
+  query: ReqQuery;
+  params: P;
+  body: ReqBody;
+}
+
+// Define interface for query parameters
+interface SalesPaymentQuery {
+  includeDetails?: string;
+}
+
+// Define interface for invoice params
+interface InvoiceParams {
+  invoiceId: string;
+}
+
+// Define interface for delete params
+interface DeleteParams {
+  id: string;
+}
 
 export class SalesPaymentController extends BaseController {
   private salesPaymentModel: SalesPaymentModel;
@@ -15,7 +44,7 @@ export class SalesPaymentController extends BaseController {
     this.salesPaymentModel = new SalesPaymentModel();
   }
 
-  async getSalesPayments(req: AuthenticatedRequest, res: Response) {
+  async getSalesPayments(req: AuthenticatedRequest<Record<string, string>, any, any, SalesPaymentQuery>, res: Response) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
@@ -24,7 +53,7 @@ export class SalesPaymentController extends BaseController {
     res.json(salesPayments);
   }
 
-  async getSalesPaymentsByInvoice(req: AuthenticatedRequest, res: Response) {
+  async getSalesPaymentsByInvoice(req: AuthenticatedRequest<InvoiceParams, any, any, SalesPaymentQuery>, res: Response) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
@@ -38,7 +67,7 @@ export class SalesPaymentController extends BaseController {
     res.json(salesPayments);
   }
 
-  async createSalesPayment(req: AuthenticatedRequest, res: Response) {
+  async createSalesPayment(req: AuthenticatedRequest<any, any, any, any>, res: Response) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
@@ -46,7 +75,7 @@ export class SalesPaymentController extends BaseController {
     const uuidFields = ['invoiceId', 'retailerId', 'bankAccountId'];
     const sanitizedBody = this.sanitizeUUIDs(req.body, uuidFields);
     
-    const validatedData = this.validateZodSchema(insertSalesPaymentSchema, sanitizedBody);
+    const validatedData = this.validateZodSchema(insertSalesPaymentSchema, sanitizedBody) as any;
     
     // Additional business validation
     if (['Bank Transfer', 'UPI', 'Cheque'].includes(validatedData.paymentMode)) {
@@ -82,7 +111,7 @@ export class SalesPaymentController extends BaseController {
     res.status(201).json(salesPayment);
   }
 
-  async deleteSalesPayment(req: AuthenticatedRequest, res: Response) {
+  async deleteSalesPayment(req: AuthenticatedRequest<DeleteParams, any, any, any>, res: Response) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     const { id } = req.params;

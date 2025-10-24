@@ -1,265 +1,180 @@
-import { Request, Response } from 'express';
-import { BaseController } from '../../utils/base';
-import { AuthModel } from './model';
-import { TenantModel } from '../tenants/model';
-import { signToken, signRefreshToken, verifyRefreshToken, type AuthTokenPayload, type RefreshTokenPayload } from '../../middleware/auth';
-import { type AuthenticatedRequest, UserRole, ValidationError, NotFoundError, UnauthorizedError, ForbiddenError, BadRequestError, InternalServerError } from '../../types';
-import schema from '../../../shared/schema.js';
+import jwt from "jsonwebtoken";
+import { Request, Response, NextFunction } from "express";
+import { IncomingHttpHeaders } from "http";
+import {
+  AuthUser as BaseAuthUser,
+  UserRole,
+  UnauthorizedError,
+  ForbiddenError
+} from "../types";
+import { ERROR_CODES } from "../constants/error-codes";
+import { ROLE_PERMISSIONS } from "../../shared/permissions";
 
-const { loginSchema, refreshTokenSchema } = schema;
-
-export class AuthController extends BaseController {
-  private authModel: AuthModel;
-
-  constructor() {
-    super();
-    this.authModel = new AuthModel();
-  }
-
-  async switchTenant(req: AuthenticatedRequest<{ tenantId: string }>, res: Response) {
-  const { tenantId } = req.body;
-  if (!tenantId) {
-    return res.status(400).json({ error: "tenantId is required" });
-  }
-  // ...
+// -----------------------------
+// JWT Secrets
+// -----------------------------
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required in production');
 }
 
+export const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+export const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "your-refresh-secret-key";
 
-  async login(req: Request, res: Response) {
-    // Validate request body
-    const { username, password } = this.validateZodSchema(loginSchema, req.body);
-    const authReq = req as AuthenticatedRequest;
+// -----------------------------
+// AuthUser
+// -----------------------------
+export interface AuthUser extends BaseAuthUser {
+  tenantId: string;
+}
 
-    // Check if a slug was provided but tenant context is missing
-    if ((authReq as any).slugProvided && (!authReq.tenant || !authReq.tenantId)) {
-      throw new NotFoundError('Tenant');
+// -----------------------------
+// AuthenticatedRequest
+// -----------------------------
+export interface AuthenticatedRequest extends Request {
+  user?: AuthUser;
+  tenantId?: string;
+  tenant?: {
+    id: string;
+    name: string;
+    slug: string;
+    isActive: boolean;
+    settings: unknown;
+    createdAt: Date;
+  };
+  headers: IncomingHttpHeaders; // ✅ explicitly define headers
+}
+
+// -----------------------------
+// JWT Payloads
+// -----------------------------
+export interface AuthTokenPayload extends AuthUser {}
+export interface RefreshTokenPayload {
+  id: string;
+  username: string;
+  tenantId: string;
+  tokenVersion: number;
+}
+
+// -----------------------------
+// Sign / Verify Tokens
+// -----------------------------
+export const signToken = (payload: AuthTokenPayload) =>
+  jwt.sign(payload, JWT_SECRET, { expiresIn: "1h" });
+
+export const signRefreshToken = (payload: RefreshTokenPayload) =>
+  jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: "7d" });
+
+export const verifyRefreshToken = (token: string): RefreshTokenPayload => {
+  try {
+    return jwt.verify(token, JWT_REFRESH_SECRET) as RefreshTokenPayload;
+  } catch (error) {
+    if (error instanceof jwt.TokenExpiredError) {
+      throw new UnauthorizedError('Refresh token expired', ERROR_CODES.AUTH_TOKEN_EXPIRED);
     }
-
-    // Handle case where tenant object exists but tenantId is missing
-    if (authReq.tenant && !authReq.tenantId) {
-      throw new BadRequestError('Invalid tenant context');
-    }
-
-    // Check for tenant context from slug middleware
-    if (authReq.tenant && authReq.tenantId) {
-      // Tenant-specific login (/{slug}/login)
-      console.log(`Tenant-specific login attempt for user ${username} in tenant ${authReq.tenant.slug}`);
-
-      const authResult = await this.authModel.authenticateUserWithTenant(username, password, authReq.tenantId);
-      
-      if (!authResult.success) {
-        if (authResult.error === 'USER_NOT_IN_TENANT') {
-          throw new ForbiddenError('User not authorized for this tenant');
-        }
-        if (authResult.error === 'TENANT_INACTIVE') {
-          throw new ForbiddenError('Account access is temporarily suspended');
-        }
-        throw new UnauthorizedError('Invalid username or password');
-      }
-
-      const user = authResult.user!;
-
-      // Validate user role conforms to UserRole enum
-      const validRoles = Object.values(UserRole);
-      if (!validRoles.includes(user.role as UserRole)) {
-        console.error(`Invalid role for user ${user.id}: ${user.role}`);
-        throw new InternalServerError('User has invalid role configuration');
-      }
-
-      // Generate JWT access token with tenant context
-      const tokenPayload: AuthTokenPayload = {
-        id: user.id,
-        username: user.username,
-        role: user.role as UserRole,
-        tenantId: authReq.tenantId
-      };
-      
-      const token = signToken(tokenPayload);
-
-      // Generate refresh token
-      const refreshTokenPayload: RefreshTokenPayload = {
-        id: user.id,
-        username: user.username,
-        tenantId: authReq.tenantId,
-        tokenVersion: 1
-      };
-      
-      const refreshToken = signRefreshToken(refreshTokenPayload);
-
-      // Set refresh token as HttpOnly cookie
-      res.cookie('refreshToken', refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-      });
-
-      console.log(`Successful tenant login for user ${username} in tenant ${authReq.tenant.slug}`);
-
-      return res.json({
-        token,
-        user: {
-          id: user.id,
-          username: user.username,
-          name: user.name,
-          role: user.role,
-          tenantId: authReq.tenantId,
-          permissions: user.permissions
-        }
-      });
-    } else {
-      // No tenant context - require tenant for all logins in tenant-only system
-      throw new BadRequestError('Tenant context required');
-    }
+    throw new UnauthorizedError('Invalid refresh token', ERROR_CODES.AUTH_TOKEN_INVALID);
   }
+};
 
-  async logout(req: Request, res: Response) {
-    // Clear refresh token cookie
-    res.clearCookie('refreshToken', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict'
-    });
+// -----------------------------
+// Middleware: Authenticate JWT
+// -----------------------------
+export const authenticateToken = (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  const authHeader = req.headers['authorization']; // ✅ headers now fully recognized
+  const token = authHeader && authHeader.split(' ')[1];
 
-    // Log the logout action for audit purposes
-    const authReq = req as AuthenticatedRequest;
-    if (authReq.user) {
-      console.log(`User ${authReq.user.username} logged out at ${new Date().toISOString()}`);
+  if (!token) throw new UnauthorizedError('Access token required');
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as AuthTokenPayload;
+    req.user = decoded;
+    next();
+  } catch (err) {
+    if (err instanceof jwt.TokenExpiredError) {
+      throw new UnauthorizedError('Token expired', ERROR_CODES.AUTH_TOKEN_EXPIRED);
     }
-
-    res.json({
-      message: 'Logged out successfully'
-    });
+    throw new UnauthorizedError('Invalid token', ERROR_CODES.AUTH_TOKEN_INVALID);
   }
+};
 
-  async getCurrentUser(req: Request, res: Response) {
-    const authReq = req as AuthenticatedRequest;
-    
-    if (!authReq.user) {
-      throw new UnauthorizedError('No authenticated user found');
-    }
-
-    // Get fresh user data from database
-    const user = await this.authModel.getUserForToken(authReq.user.id);
-    
-    if (!user) {
-      throw new NotFoundError('User');
-    }
-
-    res.json({
-      user: {
-        id: user.id,
-        username: user.username,
-        name: user.name,
-        role: user.role,
-        tenantId: user.tenantId,
-        permissions: user.permissions
-      }
-    });
+// -----------------------------
+// Role / Permission Middleware
+// -----------------------------
+export const requireRole = (roles: UserRole[]) => async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  if (!req.user || !roles.includes(req.user.role)) {
+    throw new ForbiddenError('Insufficient permissions');
   }
+  next();
+};
 
-  async refreshToken(req: Request, res: Response) {
-    // Get refresh token from HttpOnly cookie
-    const refreshToken = req.cookies.refreshToken;
-    
-    if (!refreshToken) {
-      throw new UnauthorizedError('Refresh token not found');
-    }
+export const requirePermission = (permissions: (keyof typeof ROLE_PERMISSIONS)[]) => async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  if (!req.user) throw new UnauthorizedError('Authentication required');
 
-    // Verify refresh token
-    let refreshPayload: RefreshTokenPayload;
-    try {
-      refreshPayload = verifyRefreshToken(refreshToken);
-    } catch (error) {
-      // Clear invalid refresh token cookie
-      res.clearCookie('refreshToken', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict'
-      });
-      throw new UnauthorizedError('Invalid refresh token');
-    }
+  const { UserModel } = await import('../modules/users/model');
+  const userModel = new UserModel();
+  const user = await userModel.getUserForAuth(req.user.id);
 
-    // Validate user still exists
-    const userExists = await this.authModel.validateUserExists(refreshPayload.id);
-    
-    if (!userExists) {
-      // Clear refresh token cookie for non-existent user
-      res.clearCookie('refreshToken', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict'
-      });
-      throw new UnauthorizedError('User no longer exists');
-    }
+  if (!user) throw new ForbiddenError('User not found');
 
-    // Get fresh user data
-    const user = await this.authModel.getUserForToken(refreshPayload.id);
-    
-    if (!user) {
-      throw new NotFoundError('User');
-    }
+  const userPermissions = user.permissions.length
+    ? user.permissions
+    : ROLE_PERMISSIONS[user.role as keyof typeof ROLE_PERMISSIONS];
 
-    // Validate tenant status before issuing new access token
-    const tenant = await TenantModel.getTenant(user.tenantId);
-    if (!tenant || !tenant.isActive) {
+  const hasPermission = permissions.some(permission => userPermissions.includes(permission as any));
+  if (!hasPermission) throw new ForbiddenError('Insufficient permissions');
+
+  next();
+};
+
+// -----------------------------
+// Tenant Middleware
+// -----------------------------
+export const validateTenant = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  if (req.tenant) {
+    if (!req.tenant.isActive)
       throw new ForbiddenError('Account access is temporarily suspended');
-    }
-
-    // Validate user role conforms to UserRole enum
-    const validRoles = Object.values(UserRole);
-    if (!validRoles.includes(user.role as UserRole)) {
-      console.error(`Invalid role for user ${user.id}: ${user.role}`);
-      throw new InternalServerError('User has invalid role configuration');
-    }
-
-    // Generate new access token
-    const tokenPayload: AuthTokenPayload = {
-      id: user.id,
-      username: user.username,
-      role: user.role as UserRole,
-      tenantId: user.tenantId
-    };
-    
-    const token = signToken(tokenPayload);
-
-    // Return new access token and user data
-    res.json({
-      token,
-      user: {
-        id: user.id,
-        username: user.username,
-        name: user.name,
-        role: user.role,
-        tenantId: user.tenantId,
-        permissions: user.permissions
-      }
-    });
+    return next();
   }
 
-  async switchTenant(req: AuthenticatedRequest, res: Response) {
-   const { tenantId } = req.body ;
+  if (!req.user?.tenantId) throw new ForbiddenError('No tenant context found');
 
-    if (!tenantId) {
-      throw new BadRequestError('Tenant ID is required');
-    }
+  const { TenantModel } = await import('../modules/tenants/model');
+  const tenant = await TenantModel.getTenant(req.user.tenantId);
 
-    if (!req.user) {
-      throw new UnauthorizedError('User not authenticated');
-    }
+  if (!tenant || !tenant.isActive)
+    throw new ForbiddenError('Account access is temporarily suspended');
 
-    // Verify the tenant exists and is active
-    const tenant = await TenantModel.getTenant(tenantId);
-    if (!tenant) {
-      throw new NotFoundError('Tenant');
-    }
+  req.tenant = tenant;
+  next();
+};
 
-    if (!tenant.isActive) {
-      throw new ForbiddenError('Tenant is not active');
-    }
-
-    // In tenant-only system, users can only access their own tenant
-    // Remove tenant switching capability as each user belongs to one tenant
-    throw new ForbiddenError('Tenant switching not available');
+export const attachTenantContext = (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  if (req.tenant) {
+    req.tenantId = req.tenant.id;
+    return next();
   }
-}
+
+  if (!req.user?.tenantId) throw new ForbiddenError('No tenant context found');
+
+  req.tenantId = req.user.tenantId;
+  next();
+};

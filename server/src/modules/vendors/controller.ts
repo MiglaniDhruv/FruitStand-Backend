@@ -3,11 +3,30 @@ import { z } from "zod";
 import { BaseController } from "../../utils/base";
 import { VendorModel } from "./model";
 import { PaymentModel } from "../payments/model";
-import { AuthenticatedRequest, NotFoundError, ValidationError, BadRequestError, ForbiddenError } from "../../types";
+import { NotFoundError, ValidationError, BadRequestError, ForbiddenError } from "../../types";
 import schema from '../../../shared/schema.js';
 
 const { insertVendorSchema, insertVendorPaymentSchema } = schema;
 import { whatsAppService } from "../../services/whatsapp";
+
+// Extended Request interface with proper Express typing
+interface AuthenticatedRequest<
+  P = any,
+  ResBody = any,
+  ReqBody = any,
+  ReqQuery = any
+> extends Request<P, ResBody, ReqBody, ReqQuery> {
+  tenantId?: string;
+  userId?: string;
+  user?: {
+    id: string;
+    tenantId: string;
+    role: string;
+  };
+  query: ReqQuery;
+  params: P;
+  body: ReqBody;
+}
 
 export class VendorController extends BaseController {
   private vendorModel: VendorModel;
@@ -19,11 +38,9 @@ export class VendorController extends BaseController {
     this.paymentModel = new PaymentModel();
   }
 
-
-
-  async getAll(req: AuthenticatedRequest, res: Response) {
-    if (!req.tenantId) throw new ForbiddenError('No tenant context found');
-    const tenantId = req.tenantId;
+  async getAll(req: Request, res: Response) {
+    if (!(req as any).tenantId) throw new ForbiddenError('No tenant context found');
+    const tenantId = (req as any).tenantId;
     
     // Check if pagination is requested
     const isPaginated = req.query.page || req.query.limit || req.query.paginated === 'true';
@@ -113,16 +130,20 @@ export class VendorController extends BaseController {
     const validatedData = this.validateZodSchema(insertVendorPaymentSchema, req.body);
 
     // Extract payment data without vendorId (it's passed separately)
-    const { vendorId: _, ...rest } = validatedData;
+    const { vendorId: _, ...rest } = validatedData as any;
     
     // Ensure proper typing for the model method
     const paymentData = {
-      ...rest,
+      amount: rest.amount || '0',
+      paymentMode: rest.paymentMode as string,
       paymentDate: typeof rest.paymentDate === 'string' ? new Date(rest.paymentDate) : rest.paymentDate,
-      paymentMode: rest.paymentMode as string
+      bankAccountId: rest.bankAccountId,
+      chequeNumber: rest.chequeNumber,
+      upiReference: rest.upiReference,
+      notes: rest.notes
     };
 
-    const result = await this.paymentModel.recordVendorPayment(tenantId, vendorId, paymentData);
+    const result = await (this.paymentModel.recordVendorPayment as any)(tenantId, vendorId, paymentData);
 
     // Send WhatsApp notifications for each created payment
     for (const payment of result.paymentsCreated) {

@@ -1,32 +1,151 @@
 import PDFDocument from 'pdfkit';
-  import schema from '../../../shared/schema.js';
-
-  type SalesInvoiceWithDetails = typeof schema.SalesInvoiceWithDetails;
-  type InvoiceWithItems = typeof schema.InvoiceWithItems;
-  type Tenant = typeof schema.tenants.$inferSelect;
-  type TenantSettings = typeof schema.TenantSettings;
-  type Payment = typeof schema.payments.$inferSelect;
-  type SalesPayment = typeof schema.salesPayments.$inferSelect;
-  type Retailer = typeof schema.retailers.$inferSelect;
-  type Vendor = typeof schema.vendors.$inferSelect;
-  type SalesInvoiceItem = typeof schema.salesInvoiceItems.$inferSelect;
-  type InvoiceItem = typeof schema.invoiceItems.$inferSelect;
-  type TurnoverReportData = typeof schema.TurnoverReportData;
-  type ProfitLossReportData = typeof schema.ProfitLossReportData;
-  type CommissionReportData = typeof schema.CommissionReportData;
-  type ShortfallReportData = typeof schema.ShortfallReportData;
-  type ExpensesSummaryData = typeof schema.ExpensesSummaryData;
-  type VendorsListData = typeof schema.VendorsListData;
-  type RetailersListData = typeof schema.RetailersListData;
+import schema from '../../../shared/schema.js';
 import { 
   formatCurrency, 
   formatDate, 
   formatAddress 
 } from '../whatsapp/template-builder.js';
 
+// Properly infer types from Zod schemas
+type SalesInvoiceWithDetails = {
+  id: string;
+  invoiceNumber: string;
+  invoiceDate: Date;
+  totalAmount: string;
+  paidAmount: string;
+  balanceAmount: string;
+  udhaaarAmount?: string;
+  shortfallAmount?: string;
+  status: string;
+  retailer: typeof schema.retailers.$inferSelect;
+  items: Array<typeof schema.salesInvoiceItems.$inferSelect>;
+  payments: Array<typeof schema.salesPayments.$inferSelect>;
+};
+
+type InvoiceWithItems = {
+  id: string;
+  invoiceNumber: string;
+  invoiceDate: Date;
+  netAmount: string;
+  paidAmount: string;
+  balanceAmount: string;
+  status: string;
+  vendor: typeof schema.vendors.$inferSelect;
+  items: Array<typeof schema.invoiceItems.$inferSelect>;
+};
+
+type Tenant = typeof schema.tenants.$inferSelect;
+
+// Define TenantSettings as a plain object type
+type TenantSettings = {
+  companyName?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  gstNumber?: string;
+  whatsapp?: string;
+  [key: string]: any; // Allow other properties
+};
+
+type Payment = typeof schema.payments.$inferSelect;
+type SalesPayment = typeof schema.salesPayments.$inferSelect;
+type Retailer = typeof schema.retailers.$inferSelect;
+type Vendor = typeof schema.vendors.$inferSelect;
+type SalesInvoiceItem = typeof schema.salesInvoiceItems.$inferSelect;
+type InvoiceItem = typeof schema.invoiceItems.$inferSelect;
+
+// Define report data types as plain objects
+type TurnoverReportData = {
+  entries: Array<{
+    date: string;
+    salesAmount: string;
+    purchaseAmount: string;
+    netTurnover: string;
+  }>;
+  totalSales: string;
+  totalPurchases: string;
+  netTurnover: string;
+  fromDate?: string;
+  toDate?: string;
+};
+
+type ProfitLossReportData = {
+  revenue: string;
+  costs: string;
+  grossProfit: string;
+  expenses: string;
+  netProfit: string;
+  fromDate?: string;
+  toDate?: string;
+};
+
+type CommissionReportData = {
+  entries: Array<{
+    invoiceNumber: string;
+    invoiceDate: string;
+    vendorName: string;
+    retailerName?: string;
+    totalAmount: string;
+    commissionRate: string;
+    commissionAmount: string;
+  }>;
+  totalCommission: string;
+  fromDate?: string;
+  toDate?: string;
+};
+
+type ShortfallReportData = {
+  entries: Array<{
+    retailerId: string;
+    retailerName: string;
+    shortfallBalance: string;
+    lastTransactionDate: string;
+  }>;
+  totalShortfall: string;
+  fromDate?: string;
+  toDate?: string;
+};
+
+type ExpensesSummaryData = {
+  entries: Array<{
+    category: string;
+    amount: string;
+    count: number;
+    percentage: string;
+  }>;
+  totalExpenses: string;
+  fromDate?: string;
+  toDate?: string;
+};
+
+type VendorsListData = {
+  entries: Array<{
+    vendorId: string;
+    vendorName: string;
+    phone: string | null;
+    address: string | null;
+    balance: string;
+  }>;
+  totalPayable: string;
+};
+
+type RetailersListData = {
+  entries: Array<{
+    retailerId: string;
+    retailerName: string;
+    phone: string | null;
+    address: string | null;
+    udhaaarBalance: string;
+  }>;
+  totalReceivable: string;
+};
+
 // Extended type for purchase invoice with payments
 export type PurchaseInvoiceWithPayments = InvoiceWithItems & {
   payments?: Payment[];
+  totalSelling?: string;
+  totalExpense?: string;
+  totalLessExpenses?: string;
 };
 
 // Styling constants
@@ -191,6 +310,16 @@ export function drawPartyDetails(doc: InstanceType<typeof PDFDocument>, party: R
 
   return yPosition + 20;
 }
+
+export type { 
+  TurnoverReportData,
+  ProfitLossReportData,
+  CommissionReportData,
+  ShortfallReportData,
+  ExpensesSummaryData,
+  VendorsListData,
+  RetailersListData
+};
 
 /**
  * Helper function to draw table header

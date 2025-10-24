@@ -6,7 +6,8 @@ import { withTenant, ensureTenantInsert } from '../../utils/tenant-scope';
 import { applySorting, applySearchFilter, getCountWithSearch, buildPaginationMetadata, withTenantPagination } from '../../utils/pagination';
 import { BadRequestError, NotFoundError } from '../../types';
 import { z } from 'zod';
-
+import type { PaginatedResult } from '../../../shared/schema';
+import type { BankAccount1 } from '../../types/index.ts';
 
 // Destructure what you need from the default export
 const { 

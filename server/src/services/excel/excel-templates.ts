@@ -1,14 +1,17 @@
-import type { Workbook, Worksheet } from 'exceljs';
+import type { Workbook, Worksheet, Cell } from 'exceljs';
+import { z } from 'zod';
 import schema from '../../../shared/schema.js';
 
 type Tenant = typeof schema.tenants.$inferSelect;
-type TurnoverReportData = typeof schema.TurnoverReportData;
-type ProfitLossReportData = typeof schema.ProfitLossReportData;
-type CommissionReportData = typeof schema.CommissionReportData;
-type ShortfallReportData = typeof schema.ShortfallReportData;
-type ExpensesSummaryData = typeof schema.ExpensesSummaryData;
-type VendorsListData = typeof schema.VendorsListData;
-type RetailersListData = typeof schema.RetailersListData;
+
+// ✅ Use z.infer to extract the correct TypeScript types from Zod schemas
+type TurnoverReportData = z.infer<typeof schema.TurnoverReportData>;
+type ProfitLossReportData = z.infer<typeof schema.ProfitLossReportData>;
+type CommissionReportData = z.infer<typeof schema.CommissionReportData>;
+type ShortfallReportData = z.infer<typeof schema.ShortfallReportData>;
+type ExpensesSummaryData = z.infer<typeof schema.ExpensesSummaryData>;
+type VendorsListData = z.infer<typeof schema.VendorsListData>;
+type RetailersListData = z.infer<typeof schema.RetailersListData>;
 
 
 // Styling constants

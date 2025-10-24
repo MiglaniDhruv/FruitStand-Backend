@@ -1,6 +1,6 @@
 import { db } from '../../../db';
 import schema from '../../../shared/schema.js';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { withTenant, ensureTenantInsert } from '../../utils/tenant-scope';
 
 // Destructure what you need from the default export
@@ -138,25 +138,28 @@ export class WhatsAppCreditModel {
           }
         };
 
+        // Use sql template to update settings field
         await tx
           .update(tenants)
-          .set({ settings: updatedSettings })
+          .set({ 
+            settings: sql`${updatedSettings}`
+          } as any)
           .where(eq(tenants.id, tenantId));
 
         // Create credit transaction record
-        const transactionData: InsertWhatsAppCreditTransaction = {
+        const transactionData = {
           tenantId,
-          transactionType: 'usage',
+          transactionType: 'usage' as const,
           amount: -amount, // Negative for deduction
           balanceAfter: newBalance,
           referenceType,
           referenceId,
-          notes
+          notes: notes || undefined
         };
 
         const [transaction] = await tx
           .insert(whatsappCreditTransactions)
-          .values(transactionData)
+          .values(transactionData as any)
           .returning();
 
         const lowCreditWarning = newBalance <= lowCreditThreshold;

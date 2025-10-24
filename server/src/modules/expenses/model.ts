@@ -6,12 +6,44 @@ import { z } from 'zod';
 const { expenseCategories, expenses, bankAccounts, cashbook, bankbook } = schema;
 
 type ExpenseCategory = typeof schema.expenseCategories.$inferSelect;
-type InsertExpenseCategory = typeof schema.insertExpenseCategorySchema._input;
 type Expense = typeof schema.expenses.$inferSelect;
-type InsertExpense = typeof schema.insertExpenseSchema._input;
-type ExpenseWithCategory = typeof schema.ExpenseWithCategory;
+type BankAccount = typeof schema.bankAccounts.$inferSelect;
+
+// Define proper insert types
+type InsertExpenseCategory = typeof schema.expenseCategories.$inferInsert;
+type InsertExpenseBase = typeof schema.expenses.$inferInsert;
+
+// Extend InsertExpense to include optional fields that might be missing from schema
+type InsertExpense = InsertExpenseBase & {
+  bankAccountId?: string | null;
+  chequeNumber?: string | null;
+  upiReference?: string | null;
+  notes?: string | null;
+};
+
+// Define ExpenseWithCategory type
+export type ExpenseWithCategory = Expense & {
+  category: ExpenseCategory | null;
+  bankAccount: BankAccount | null;
+};
+
 type PaginationOptions = typeof schema.PaginationOptions;
-export function PaginatedResult<T extends z.ZodTypeAny>(dataSchema: T) {
+
+// Define PaginatedResult type
+export type PaginatedResult<T> = {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrevious: boolean;
+  };
+};
+
+// Zod schema factory for validation if needed
+export function PaginatedResultSchema<T extends z.ZodTypeAny>(dataSchema: T) {
   return z.object({
     data: z.array(dataSchema),
     pagination: z.object({
@@ -24,6 +56,7 @@ export function PaginatedResult<T extends z.ZodTypeAny>(dataSchema: T) {
     }),
   });
 }
+
 import { withTenant, ensureTenantInsert } from '../../utils/tenant-scope';
 import { BankAccountModel } from '../bank-accounts/model';
 import { TenantModel } from '../tenants/model';
@@ -55,8 +88,15 @@ export class ExpenseModel {
   }
 
   async updateExpenseCategory(tenantId: string, id: string, categoryData: Partial<InsertExpenseCategory>): Promise<ExpenseCategory | undefined> {
+    const updateData: any = {};
+    
+    if (categoryData.name !== undefined) updateData.name = categoryData.name;
+    if ('description' in categoryData && categoryData.description !== undefined) {
+      updateData.description = categoryData.description;
+    }
+    
     const [category] = await db.update(expenseCategories)
-      .set(categoryData)
+      .set(updateData)
       .where(withTenant(expenseCategories, tenantId, eq(expenseCategories.id, id)))
       .returning();
     return category;
@@ -64,7 +104,7 @@ export class ExpenseModel {
 
   async deleteExpenseCategory(tenantId: string, id: string): Promise<boolean> {
     const [category] = await db.update(expenseCategories)
-      .set({ isActive: false })
+      .set({ isActive: false } as any)
       .where(withTenant(expenseCategories, tenantId, eq(expenseCategories.id, id)))
       .returning();
     return !!category;
@@ -83,19 +123,22 @@ export class ExpenseModel {
     const categoryIds = expensesData.map(e => e.categoryId);
     const bankAccountIds = expensesData
       .map(e => e.bankAccountId)
-      .filter(id => id !== null) as string[];
+      .filter((id): id is string => id !== null);
 
     const [categoriesData, bankAccountsData] = await Promise.all([
       categoryIds.length > 0 ? db.select().from(expenseCategories).where(withTenant(expenseCategories, tenantId, inArray(expenseCategories.id, categoryIds))) : [],
       bankAccountIds.length > 0 ? db.select().from(bankAccounts).where(withTenant(bankAccounts, tenantId, inArray(bankAccounts.id, bankAccountIds))) : []
     ]);
 
-    // Create lookup maps
-    const categoryMap = new Map(categoriesData.map(c => [c.id, c]));
-    const bankAccountMap = new Map(bankAccountsData.map(b => [b.id, b]));
+    // Create lookup maps with proper typing
+    const categoryMap = new Map<string, ExpenseCategory>();
+    categoriesData.forEach(c => categoryMap.set(c.id, c));
+    
+    const bankAccountMap = new Map<string, BankAccount>();
+    bankAccountsData.forEach(b => bankAccountMap.set(b.id, b));
 
     // Assemble final data
-    const result = expensesData.map(expense => ({
+    const result: ExpenseWithCategory[] = expensesData.map(expense => ({
       ...expense,
       category: categoryMap.get(expense.categoryId) || null,
       bankAccount: expense.bankAccountId ? (bankAccountMap.get(expense.bankAccountId) || null) : null
@@ -170,19 +213,22 @@ export class ExpenseModel {
     const categoryIds = expensesData.map(e => e.categoryId);
     const bankAccountIds = expensesData
       .map(e => e.bankAccountId)
-      .filter(id => id !== null) as string[];
+      .filter((id): id is string => id !== null);
 
     const [categoriesData, bankAccountsData] = await Promise.all([
       categoryIds.length > 0 ? db.select().from(expenseCategories).where(withTenant(expenseCategories, tenantId, inArray(expenseCategories.id, categoryIds))) : [],
       bankAccountIds.length > 0 ? db.select().from(bankAccounts).where(withTenant(bankAccounts, tenantId, inArray(bankAccounts.id, bankAccountIds))) : []
     ]);
 
-    // Create lookup maps
-    const categoryMap = new Map(categoriesData.map(c => [c.id, c]));
-    const bankAccountMap = new Map(bankAccountsData.map(b => [b.id, b]));
+    // Create lookup maps with proper typing
+    const categoryMap = new Map<string, ExpenseCategory>();
+    categoriesData.forEach(c => categoryMap.set(c.id, c));
+    
+    const bankAccountMap = new Map<string, BankAccount>();
+    bankAccountsData.forEach(b => bankAccountMap.set(b.id, b));
 
     // Assemble final data
-    const result = expensesData.map(expense => ({
+    const result: ExpenseWithCategory[] = expensesData.map(expense => ({
       ...expense,
       category: categoryMap.get(expense.categoryId) || null,
       bankAccount: expense.bankAccountId ? (bankAccountMap.get(expense.bankAccountId) || null) : null
@@ -214,7 +260,7 @@ export class ExpenseModel {
       ...expense,
       category: category || null,
       bankAccount: bankAccount || null
-    } as ExpenseWithCategory;
+    };
   }
 
   async createExpense(tenantId: string, expenseData: InsertExpense): Promise<ExpenseWithCategory> {
@@ -252,9 +298,14 @@ export class ExpenseModel {
         // Calculate new balance (expense is outflow)
         const newBalance = currentBalance - parseFloat(expenseData.amount);
 
+        // Ensure date is a Date object
+        const paymentDate = expenseData.paymentDate instanceof Date 
+          ? expenseData.paymentDate 
+          : new Date(expenseData.paymentDate);
+
         // Insert cashbook entry
         await tx.insert(cashbook).values(ensureTenantInsert({
-          date: expenseData.paymentDate,
+          date: paymentDate,
           description: `Expense - ${category.name}: ${expenseData.description}`,
           outflow: expenseData.amount,
           inflow: '0.00',
@@ -282,10 +333,15 @@ export class ExpenseModel {
         // Calculate new balance (expense is outflow)
         const newBalance = currentBalance - parseFloat(expenseData.amount);
 
+        // Ensure date is a Date object
+        const paymentDate = expenseData.paymentDate instanceof Date 
+          ? expenseData.paymentDate 
+          : new Date(expenseData.paymentDate);
+
         // Insert bankbook entry
         await tx.insert(bankbook).values(ensureTenantInsert({
           bankAccountId: expenseData.bankAccountId,
-          date: expenseData.paymentDate,
+          date: paymentDate,
           description: `Expense - ${category.name}: ${expenseData.description}`,
           credit: expenseData.amount,
           debit: '0.00',

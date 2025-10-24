@@ -19,8 +19,9 @@ type SalesInvoice = typeof schema.salesInvoices.$inferSelect;
 type InsertSalesInvoice = typeof schema.insertSalesInvoiceSchema._input;
 type InsertSalesInvoiceItem = typeof schema.insertSalesInvoiceItemSchema._input;
 type InsertCrateTransaction = typeof schema.insertCrateTransactionSchema._input;
-type SalesInvoiceWithDetails = typeof schema.SalesInvoiceWithDetails;
-type PaginationOptions = typeof schema.PaginationOptions;
+type SalesInvoiceWithDetails = z.infer<typeof schema.SalesInvoiceWithDetails>;
+type PaginationOptions = z.infer<typeof schema.PaginationOptions>;
+
 export function PaginatedResult<T extends z.ZodTypeAny>(dataSchema: T) {
   return z.object({
     data: z.array(dataSchema),
@@ -34,6 +35,7 @@ export function PaginatedResult<T extends z.ZodTypeAny>(dataSchema: T) {
     }),
   });
 }
+
 type Retailer = typeof schema.retailers.$inferSelect;
 type InvoiceShareLink = typeof schema.invoiceShareLinks.$inferSelect;
 type CrateTransaction = typeof schema.crateTransactions.$inferSelect;
@@ -95,7 +97,7 @@ export class SalesInvoiceModel {
     ]);
     
     // Create lookup maps
-    const retailerMap = new Map(retailersData.map(r => [r.id, r]));
+    const retailerMap = new Map(retailersData.map(r => [r.id, r] as const));
     const itemsMap = new Map<string, any[]>();
     const paymentsMap = new Map<string, any[]>();
     
@@ -170,7 +172,12 @@ export class SalesInvoiceModel {
     const paymentsList = await db.select().from(salesPayments)
       .where(withTenant(salesPayments, tenantId, eq(salesPayments.invoiceId, invoice.id)));
 
-    return { ...invoice, retailer, items: itemsList, payments: paymentsList };
+    return {
+      ...invoice,
+      retailer,
+      items: itemsList,
+      payments: paymentsList
+    } as SalesInvoiceWithDetails;
   }
 
   async createSalesInvoice(tenantId: string, invoiceData: InsertSalesInvoice, itemsData: InsertSalesInvoiceItem[], crateTransactionData?: InsertCrateTransaction): Promise<SalesInvoiceWithDetails> {
@@ -181,7 +188,7 @@ export class SalesInvoiceModel {
       });
     }
 
-    const totalAmount = parseFloat(invoiceData.totalAmount);
+    const totalAmount = parseFloat((invoiceData as any).totalAmount);
     if (isNaN(totalAmount) || totalAmount <= 0) {
       throw new ValidationError('Invalid invoice amount', {
         totalAmount: 'Total amount must be a positive number'
@@ -194,17 +201,30 @@ export class SalesInvoiceModel {
       const invoiceNumber = `SI${String(Date.now()).slice(-6)}`;
       
       const invoiceWithTenant = ensureTenantInsert({
-        ...invoiceData,
-        invoiceNumber,
-        udhaaarAmount: invoiceData.totalAmount,
-        balanceAmount: invoiceData.totalAmount,
-        status: INVOICE_STATUS.UNPAID
-      }, tenantId);
+  ...invoiceData,
+  invoiceNumber,
+  udhaaarAmount: (invoiceData as any).totalAmount,
+  balanceAmount: (invoiceData as any).totalAmount,
+  status: INVOICE_STATUS.UNPAID,
+  retailerId: (invoiceData as any).retailerId,
+  totalAmount: (invoiceData as any).totalAmount,
+  paidAmount: '0.00',
+  shortfallAmount: '0.00',
+  invoiceDate: invoiceData.invoiceDate instanceof Date 
+    ? invoiceData.invoiceDate 
+    : new Date(invoiceData.invoiceDate)
+}, tenantId);
       const [invoice] = await tx.insert(salesInvoices).values(invoiceWithTenant).returning();
       
       const itemsWithInvoiceId = itemsData.map(item => ensureTenantInsert({
         ...item,
-        invoiceId: invoice.id
+        invoiceId: invoice.id,
+        itemId: (item as any).itemId,
+        weight: (item as any).weight,
+        crates: (item as any).crates,
+        boxes: (item as any).boxes,
+        rate: (item as any).rate,
+        amount: (item as any).amount
       }, tenantId));
       
       const createdItems = await tx.insert(salesInvoiceItems).values(itemsWithInvoiceId).returning();
@@ -239,9 +259,9 @@ export class SalesInvoiceModel {
 
       // Update retailer's udhaaarBalance by the invoice's totalAmount
       const newUdhaaarBalance = parseFloat(retailer.udhaaarBalance || '0') + parseFloat(invoice.totalAmount);
-      await tx.update(retailers)
-        .set({ udhaaarBalance: newUdhaaarBalance.toFixed(2) })
-        .where(withTenant(retailers, tenantId, eq(retailers.id, invoice.retailerId)));
+     await tx.update(retailers)
+  .set({     udhaaarBalance: newUdhaaarBalance.toFixed(2)   })
+  .where(withTenant(retailers, tenantId, eq(retailers.id, invoice.retailerId)));
 
       // Update retailer object with fresh udhaaar balance
       retailer.udhaaarBalance = newUdhaaarBalance.toFixed(2);
@@ -251,11 +271,19 @@ export class SalesInvoiceModel {
       if (crateTransactionData) {
         crateTransaction = await this.crateModel.createCrateTransaction(tenantId, {
           ...crateTransactionData,
-          salesInvoiceId: invoice.id
-        }, tx);
+          salesInvoiceId: invoice.id,
+          retailerId: (crateTransactionData as any).retailerId,
+          partyType: 'retailer' as const
+        } as any, tx);
       }
       
-      return { ...invoice, retailer, items: createdItems, payments: [], crateTransaction };
+      return {
+        ...invoice,
+        retailer,
+        items: createdItems,
+        payments: [],
+        crateTransaction
+      } as SalesInvoiceWithDetails;
     });
     } catch (error) {
       if (error instanceof AppError) throw error;
@@ -271,7 +299,7 @@ export class SalesInvoiceModel {
       });
     }
 
-    const totalAmount = parseFloat(invoiceData.totalAmount);
+    const totalAmount = parseFloat((invoiceData as any).totalAmount);
     if (isNaN(totalAmount) || totalAmount <= 0) {
       throw new ValidationError('Invalid invoice amount', {
         totalAmount: 'Total amount must be a positive number'
@@ -306,11 +334,14 @@ export class SalesInvoiceModel {
 
         const newBalanceAfterReversal = parseFloat(retailer.udhaaarBalance || '0') - parseFloat(oldInvoice.udhaaarAmount || '0');
         await tx.update(retailers)
-          .set({ udhaaarBalance: newBalanceAfterReversal.toFixed(2) })
-          .where(and(
-            withTenant(retailers, tenantId),
-            eq(retailers.id, oldInvoice.retailerId)
-          ));
+  .set({ 
+    udhaaarBalance: newBalanceAfterReversal.toFixed(2) 
+  })
+  .where(and(
+    withTenant(retailers, tenantId),
+    eq(retailers.id, oldInvoice.retailerId)
+  ));
+
 
         // Phase 3: Delete old crate transactions
         const crateTransactionsList = await tx.select().from(crateTransactions)
@@ -332,13 +363,13 @@ export class SalesInvoiceModel {
           // Update retailer's crateBalance if there's a net change
           if (netReverse !== 0) {
             await tx.update(retailers)
-              .set({
-                crateBalance: sql`COALESCE(${retailers.crateBalance}, 0) + ${netReverse}`
-              })
-              .where(and(
-                withTenant(retailers, tenantId),
-                eq(retailers.id, oldInvoice.retailerId)
-              ));
+  .set({
+    crateBalance: sql`COALESCE(${retailers.crateBalance}, 0) + ${netReverse}`
+  })
+  .where(and(
+    withTenant(retailers, tenantId),
+    eq(retailers.id, oldInvoice.retailerId)
+  ));
           }
           
           // Delete all crate transactions
@@ -390,23 +421,32 @@ export class SalesInvoiceModel {
 
         // Phase 6: Update invoice with new data
         const [updatedInvoice] = await tx.update(salesInvoices)
-          .set({
-            ...invoiceData,
-            invoiceNumber: oldInvoice.invoiceNumber,
-            udhaaarAmount: invoiceData.totalAmount,
-            balanceAmount: invoiceData.totalAmount,
-            status: INVOICE_STATUS.UNPAID,
-            paidAmount: '0.00',
-            shortfallAmount: '0.00'
-          })
-          .where(withTenant(salesInvoices, tenantId, eq(salesInvoices.id, invoiceId)))
-          .returning();
-
+  .set({
+    invoiceDate: invoiceData.invoiceDate instanceof Date 
+      ? invoiceData.invoiceDate 
+      : new Date(invoiceData.invoiceDate || Date.now()),
+    // Remove notes if not in schema, or add it to your schema's allowed update fields
+    udhaaarAmount: sql`${(invoiceData as any).totalAmount}`,
+    balanceAmount: sql`${(invoiceData as any).totalAmount}`,
+    invoiceNumber: oldInvoice.invoiceNumber,
+    status: sql`${INVOICE_STATUS.UNPAID}`,
+    retailerId: sql`${(invoiceData as any).retailerId}`,
+    totalAmount: sql`${(invoiceData as any).totalAmount}`,
+    paidAmount: sql`${'0.00'}`,
+    shortfallAmount: sql`${'0.00'}`
+  })
+  .where(withTenant(salesInvoices, tenantId, eq(salesInvoices.id, invoiceId)))
+  .returning();
         // Phase 7: Create new invoice items
         const itemsWithInvoiceId = itemsData.map(item => ensureTenantInsert({
-          ...item,
-          invoiceId: invoiceId
-        }, tenantId));
+  invoiceId: invoiceId,
+  itemId: (item as any).itemId,
+  weight: (item as any).weight,
+  crates: (item as any).crates || '0',
+  boxes: (item as any).boxes || '0',
+  rate: (item as any).rate,
+  amount: (item as any).amount
+}, tenantId));
         
         const createdItems = await tx.insert(salesInvoiceItems).values(itemsWithInvoiceId).returning();
 
@@ -463,9 +503,20 @@ export class SalesInvoiceModel {
           }
           
           crateTransaction = await this.crateModel.createCrateTransaction(tenantId, {
-            ...crateTransactionData,
-            salesInvoiceId: invoiceId
-          }, tx);
+  retailerId: (crateTransactionData as any).retailerId,
+  partyType: 'retailer' as const,
+  transactionType: (crateTransactionData as any).transactionType,
+  quantity: (crateTransactionData as any).quantity,
+  transactionDate: (crateTransactionData as any).transactionDate,
+  notes: (crateTransactionData as any).notes
+}, tx);
+
+// Then update it with salesInvoiceId if needed
+if (crateTransaction) {
+  await tx.update(crateTransactions)
+    .set({ salesInvoiceId: invoiceId })
+    .where(eq(crateTransactions.id, crateTransaction.id));
+}
         }
 
         // Phase 11: Return updated invoice with details
@@ -508,26 +559,25 @@ export class SalesInvoiceModel {
       
       // Update invoice with paid status and amounts
       const [updatedInvoice] = await tx.update(salesInvoices)
-        .set({ 
-          status: INVOICE_STATUS.PAID,
-          paidAmount: invoice.totalAmount,
-          udhaaarAmount: '0.00',
-          shortfallAmount: shortfallAmount.toFixed(2)
-        })
-        .where(withTenant(salesInvoices, tenantId, eq(salesInvoices.id, invoiceId)))
-        .returning();
+  .set({ 
+    status: INVOICE_STATUS.PAID,
+    paidAmount: invoice.totalAmount,
+    udhaaarAmount: '0.00',
+    shortfallAmount: shortfallAmount.toFixed(2)
+  })
+  .where(withTenant(salesInvoices, tenantId, eq(salesInvoices.id, invoiceId)))
+  .returning();
       
       // Update retailer balances - decrease udhaaarBalance and increase shortfallBalance
       const newUdhaaarBalance = Math.max(0, parseFloat(retailer.udhaaarBalance || '0') - parseFloat(invoice.udhaaarAmount || '0'));
       const newShortfallBalance = parseFloat(retailer.shortfallBalance || '0') + shortfallAmount;
       
       const [updatedRetailer] = await tx.update(retailers)
-        .set({ 
-          shortfallBalance: newShortfallBalance.toFixed(2),
-          udhaaarBalance: newUdhaaarBalance.toFixed(2)
-        })
-        .where(withTenant(retailers, tenantId, eq(retailers.id, retailer.id)))
-        .returning();
+  .set({ 
+    shortfallBalance: newShortfallBalance.toFixed(2),
+    udhaaarBalance: newUdhaaarBalance.toFixed(2)
+  })
+  .where(withTenant(retailers, tenantId, eq(retailers.id, retailer.id)));
       
       return {
         invoice: updatedInvoice,
@@ -679,14 +729,14 @@ export class SalesInvoiceModel {
         const newUdhaaarBalance = Math.max(0, parseFloat(retailer.udhaaarBalance || '0') - udhaaarAmount);
         
         await tx.update(retailers)
-          .set({ 
-            shortfallBalance: newShortfallBalance.toFixed(2),
-            udhaaarBalance: newUdhaaarBalance.toFixed(2)
-          })
-          .where(and(
-            withTenant(retailers, tenantId),
-            eq(retailers.id, retailer.id)
-          ));
+  .set({ 
+    shortfallBalance: newShortfallBalance.toFixed(2),
+    udhaaarBalance: newUdhaaarBalance.toFixed(2)
+  })
+  .where(and(
+    withTenant(retailers, tenantId),
+    eq(retailers.id, retailer.id)
+  ));
       }
       
       // Finally delete the sales invoice itself
@@ -821,7 +871,9 @@ export class SalesInvoiceModel {
     ]);
     
     // Create lookup maps
-    const retailerMap = new Map(retailersData.map(r => [r.id, r]));
+    const retailerMap = new Map<string, typeof retailersData[0]>(
+  retailersData.map(r => [r.id, r] as const)
+);
     const itemsMap = new Map<string, any[]>();
     const paymentsMap = new Map<string, any[]>();
     

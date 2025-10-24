@@ -13,21 +13,36 @@ type Stock = typeof schema.stock.$inferSelect;
 type InsertStock = typeof schema.insertStockSchema._input;
 type StockMovement = typeof schema.stockMovements.$inferSelect;
 type InsertStockMovement = typeof schema.insertStockMovementSchema._input;
-type StockWithItem = typeof schema.StockWithItem;
-type PaginationOptions = typeof schema.PaginationOptions;
-export function PaginatedResult<T extends z.ZodTypeAny>(dataSchema: T) {
-  return z.object({
-    data: z.array(dataSchema),
-    pagination: z.object({
-      page: z.number(),
-      limit: z.number(),
-      total: z.number(),
-      totalPages: z.number(),
-      hasNext: z.boolean(),
-      hasPrevious: z.boolean(),
-    }),
-  });
-}
+type Item = typeof schema.items.$inferSelect;
+type Vendor = typeof schema.vendors.$inferSelect;
+
+// Define StockWithItem inline
+type StockWithItem = Stock & {
+  item: Item & {
+    vendor: Vendor;
+  };
+};
+
+type PaginationOptions = {
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+};
+
+// Define PaginatedResult as a type, not a function
+type PaginatedResult<T> = {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrevious: boolean;
+  };
+};
+
 import { db } from "../../../db";
 import {
   normalizePaginationOptions,
@@ -57,12 +72,15 @@ export class StockModel {
     ));
     
     // Assemble final data - ensure response payload remains identical
-    const result = stockData
-      .filter(record => record.item && record.vendor) // Filter out records without valid item/vendor
-      .map(record => ({
-        ...record.stock,
-        item: { ...record.item!, vendor: record.vendor! }
-      })) as StockWithItem[];
+    const result: StockWithItem[] = [];
+    for (const record of stockData) {
+      if (record.item && record.vendor) {
+        result.push({
+          ...record.stock,
+          item: { ...record.item, vendor: record.vendor }
+        });
+      }
+    }
     
     return result;
   }
@@ -174,12 +192,15 @@ export class StockModel {
     );
     
     // Assemble final data
-    const data = stockData
-      .filter(record => record.item && record.vendor) // Filter out records without valid item/vendor
-      .map(record => ({
-        ...record.stock,
-        item: { ...record.item!, vendor: record.vendor! }
-      })) as StockWithItem[];
+    const data: StockWithItem[] = [];
+    for (const record of stockData) {
+      if (record.item && record.vendor) {
+        data.push({
+          ...record.stock,
+          item: { ...record.item, vendor: record.vendor }
+        });
+      }
+    }
     
     // Get total count with same conditions
     const [{ count: total }] = await (
@@ -207,7 +228,7 @@ export class StockModel {
     return stockItem || undefined;
   }
 
-  async updateStock(tenantId: string, itemId: string, insertStock: Partial<InsertStock>, externalTx?: any): Promise<Stock> {
+  async updateStock(tenantId: string, itemId: string, insertStock: any, externalTx?: any): Promise<Stock> {
     // Add business logic validation
     if (insertStock.quantityInCrates !== undefined) {
       const cratesQty = parseFloat(insertStock.quantityInCrates || '0');
@@ -242,13 +263,13 @@ export class StockModel {
       if (existing) {
         const [updated] = await dbToUse
           .update(stock)
-          .set({ ...insertStock, lastUpdated: new Date() })
+          .set({ ...insertStock, lastUpdated: new Date() } as any)
           .where(withTenant(stock, tenantId, eq(stock.itemId, itemId)))
           .returning();
         return updated;
       } else {
         const [created] = await dbToUse.insert(stock)
-          .values(ensureTenantInsert({ ...insertStock, itemId }, tenantId))
+          .values(ensureTenantInsert({ ...insertStock, itemId }, tenantId) as any)
           .returning();
         return created;
       }
@@ -313,7 +334,7 @@ export class StockModel {
     return result;
   }
 
-  async createStockMovement(tenantId: string, insertMovement: InsertStockMovement, externalTx?: any): Promise<StockMovement> {
+  async createStockMovement(tenantId: string, insertMovement: any, externalTx?: any): Promise<StockMovement> {
     // Add business logic validation
     if (!insertMovement.itemId) {
       throw new ValidationError('Item is required', {
@@ -358,7 +379,7 @@ export class StockModel {
     try {
       const executeTransaction = async (tx: any) => {
         const [movement] = await tx.insert(stockMovements)
-          .values(ensureTenantInsert(insertMovement, tenantId))
+          .values(ensureTenantInsert(insertMovement, tenantId) as any)
           .returning();
         
         // Update stock balance after movement

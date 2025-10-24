@@ -1,13 +1,25 @@
 import PDFDocument from 'pdfkit';
 import { PassThrough } from 'stream';
+import { z } from 'zod';
 import schema from '../../../shared/schema.js';
 
-type SalesInvoiceWithDetails = typeof schema.SalesInvoiceWithDetails;
-type Tenant = typeof schema.tenants.$inferSelect;
-type ShortfallReportData = typeof schema.ShortfallReportData;
-type ExpensesSummaryData = typeof schema.ExpensesSummaryData;
-type VendorsListData = typeof schema.VendorsListData;
-type RetailersListData = typeof schema.RetailersListData;
+// Properly infer types from Zod schemas using z.infer
+type SalesInvoiceWithDetails = z.infer<typeof schema.SalesInvoiceWithDetails>;
+type ShortfallReportData = z.infer<typeof schema.ShortfallReportData>;
+type ExpensesSummaryData = z.infer<typeof schema.ExpensesSummaryData>;
+type VendorsListData = z.infer<typeof schema.VendorsListData>;
+type RetailersListData = z.infer<typeof schema.RetailersListData>;
+
+// For Drizzle table, use $inferSelect (if available) or define manually
+type Tenant = typeof schema.tenants.$inferSelect extends infer T ? T : {
+  id: string;
+  name: string;
+  slug: string;
+  isActive: boolean;
+  settings: unknown;
+  createdAt: Date;
+};
+
 import { 
   renderSalesInvoiceTemplate,
   renderPurchaseInvoiceTemplate,
@@ -19,7 +31,7 @@ import {
   renderVendorsListTemplate,
   renderRetailersListTemplate,
   type PurchaseInvoiceWithPayments
-} from './pdf-templates';
+} from './pdf-templates.js';
 
 // Import the shared report types
 import type { TurnoverReportData, ProfitLossReportData, CommissionReportData } from '@shared/schema';
@@ -28,7 +40,7 @@ export class InvoiceGenerator {
   /**
    * Generate PDF for sales invoice
    */
-  async generateSalesInvoicePDF(invoice: SalesInvoiceWithDetails, tenant: Tenant): Promise<{ doc: InstanceType<typeof PDFDocument>; stream: PassThrough }> {
+  async generateSalesInvoicePDF(invoice: any, tenant: any): Promise<{ doc: InstanceType<typeof PDFDocument>; stream: PassThrough }> {
     try {
       // Validate required data
       if (!invoice) {
@@ -73,7 +85,7 @@ export class InvoiceGenerator {
   /**
    * Generate PDF for purchase invoice
    */
-  async generatePurchaseInvoicePDF(invoice: PurchaseInvoiceWithPayments, tenant: Tenant): Promise<{ doc: InstanceType<typeof PDFDocument>; stream: PassThrough }> {
+  async generatePurchaseInvoicePDF(invoice: any, tenant: any): Promise<{ doc: InstanceType<typeof PDFDocument>; stream: PassThrough }> {
     try {
       // Validate required data
       if (!invoice) {
@@ -118,7 +130,7 @@ export class InvoiceGenerator {
   /**
    * Generate PDF for turnover report
    */
-  async generateTurnoverReportPDF(reportData: TurnoverReportData, tenant: Tenant): Promise<{ doc: InstanceType<typeof PDFDocument>; stream: PassThrough }> {
+  async generateTurnoverReportPDF(reportData: any, tenant: any): Promise<{ doc: InstanceType<typeof PDFDocument>; stream: PassThrough }> {
     try {
       if (!reportData) {
         throw new Error('Report data is required');
@@ -154,7 +166,7 @@ export class InvoiceGenerator {
   /**
    * Generate PDF for profit & loss report
    */
-  async generateProfitLossReportPDF(reportData: ProfitLossReportData, tenant: Tenant): Promise<{ doc: InstanceType<typeof PDFDocument>; stream: PassThrough }> {
+  async generateProfitLossReportPDF(reportData: any, tenant: any): Promise<{ doc: InstanceType<typeof PDFDocument>; stream: PassThrough }> {
     try {
       if (!reportData) {
         throw new Error('Report data is required');
@@ -190,7 +202,7 @@ export class InvoiceGenerator {
   /**
    * Generate PDF for commission report
    */
-  async generateCommissionReportPDF(reportData: CommissionReportData, tenant: Tenant): Promise<{ doc: InstanceType<typeof PDFDocument>; stream: PassThrough }> {
+  async generateCommissionReportPDF(reportData: any, tenant: any): Promise<{ doc: InstanceType<typeof PDFDocument>; stream: PassThrough }> {
     try {
       if (!reportData) {
         throw new Error('Report data is required');
@@ -223,7 +235,7 @@ export class InvoiceGenerator {
     }
   }
 
-  async generateShortfallReportPDF(reportData: ShortfallReportData, tenant: Tenant): Promise<{ doc: InstanceType<typeof PDFDocument>; stream: PassThrough }> {
+  async generateShortfallReportPDF(reportData: any, tenant: any): Promise<{ doc: InstanceType<typeof PDFDocument>; stream: PassThrough }> {
     try {
       if (!reportData || !tenant) {
         throw new Error('Report data and tenant information are required');
@@ -253,7 +265,7 @@ export class InvoiceGenerator {
     }
   }
 
-  async generateExpensesSummaryPDF(reportData: ExpensesSummaryData, tenant: Tenant): Promise<{ doc: InstanceType<typeof PDFDocument>; stream: PassThrough }> {
+  async generateExpensesSummaryPDF(reportData: any, tenant: any): Promise<{ doc: InstanceType<typeof PDFDocument>; stream: PassThrough }> {
     try {
       if (!reportData || !tenant) {
         throw new Error('Report data and tenant information are required');
@@ -283,7 +295,7 @@ export class InvoiceGenerator {
     }
   }
 
-  async generateVendorsListPDF(reportData: VendorsListData, tenant: Tenant): Promise<{ doc: InstanceType<typeof PDFDocument>; stream: PassThrough }> {
+  async generateVendorsListPDF(reportData: any, tenant: any): Promise<{ doc: InstanceType<typeof PDFDocument>; stream: PassThrough }> {
     try {
       if (!reportData || !tenant) {
         throw new Error('Report data and tenant information are required');
@@ -313,7 +325,7 @@ export class InvoiceGenerator {
     }
   }
 
-  async generateRetailersListPDF(reportData: RetailersListData, tenant: Tenant): Promise<{ doc: InstanceType<typeof PDFDocument>; stream: PassThrough }> {
+  async generateRetailersListPDF(reportData: any, tenant: any): Promise<{ doc: InstanceType<typeof PDFDocument>; stream: PassThrough }> {
     try {
       if (!reportData || !tenant) {
         throw new Error('Report data and tenant information are required');
@@ -342,7 +354,6 @@ export class InvoiceGenerator {
       throw new Error(`Failed to generate retailers list PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
-
 }
 
 // Export singleton instance for convenience

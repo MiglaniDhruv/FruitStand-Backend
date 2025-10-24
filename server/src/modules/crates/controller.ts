@@ -1,11 +1,11 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import schema from '../../../shared/schema.js';
-
-const { insertCrateTransactionSchema } = schema;
 import { BaseController } from '../../utils/base';
 import { CrateModel } from './model';
-import { type AuthenticatedRequest, ForbiddenError, BadRequestError } from '../../types';
+import { ForbiddenError, BadRequestError } from '../../types';
+
+const { insertCrateTransactionSchema } = schema;
 
 const crateValidation = {
   getCrateTransactionsPaginated: z.object({
@@ -40,7 +40,7 @@ export class CrateController extends BaseController {
     this.crateModel = new CrateModel();
   }
 
-  async getAll(req: AuthenticatedRequest, res: Response) {
+  async getAll(req: Request, res: Response) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
@@ -50,18 +50,16 @@ export class CrateController extends BaseController {
     }
     const options = validationResult.data;
     
-    // Check if this should return all transactions or paginated
     if (options.paginated !== 'true') {
       const allTransactions = await this.crateModel.getCrateTransactions(tenantId);
       return res.json(allTransactions);
     }
     
     const result = await this.crateModel.getCrateTransactionsPaginated(tenantId, options);
-    
     return this.sendPaginatedResponse(res, result.data, result.pagination);
   }
 
-  async getByRetailer(req: AuthenticatedRequest, res: Response) {
+  async getByRetailer(req: Request, res: Response) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
@@ -69,12 +67,11 @@ export class CrateController extends BaseController {
     this.validateUUID(retailerId, 'Retailer ID');
 
     const transactions = await this.crateModel.getCrateTransactionsByRetailer(tenantId, retailerId);
-    // Strip retailer and vendor fields to match original response format
     const responseTransactions = transactions.map(({ retailer, vendor, ...tx }) => tx);
     res.json(responseTransactions);
   }
 
-  async getByVendor(req: AuthenticatedRequest, res: Response) {
+  async getByVendor(req: Request, res: Response) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
@@ -82,19 +79,16 @@ export class CrateController extends BaseController {
     this.validateUUID(vendorId, 'Vendor ID');
 
     const transactions = await this.crateModel.getCrateTransactionsByVendor(tenantId, vendorId);
-    // Strip retailer and vendor fields to match original response format
     const responseTransactions = transactions.map(({ retailer, vendor, ...tx }) => tx);
     res.json(responseTransactions);
   }
 
-  async create(req: AuthenticatedRequest, res: Response) {
+  async create(req: Request, res: Response) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
-    // Inject tenantId into request body before validation
     const validatedData = this.validateZodSchema(insertCrateTransactionSchema, { ...req.body, tenantId });
     
-    // Ensure transactionDate is a Date object
     const transactionData = {
       ...validatedData,
       transactionDate: typeof validatedData.transactionDate === 'string' 
@@ -106,7 +100,6 @@ export class CrateController extends BaseController {
       this.crateModel.createCrateTransaction(tenantId, transactionData)
     );
     
-    // Strip retailer and vendor fields to match original response format
     const { retailer, vendor, ...responseTx } = transaction;
     res.status(201).json(responseTx);
   }

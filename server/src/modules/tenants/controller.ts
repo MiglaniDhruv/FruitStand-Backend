@@ -5,8 +5,26 @@ import schema from '../../../shared/schema.js';
 
 const { insertTenantSchema, tenantSettingsSchema } = schema;
 import { BaseController } from "../../utils/base";
-import { AuthenticatedRequest } from "../../types";
 import { ForbiddenError, BadRequestError, NotFoundError } from "../../types";
+
+// Extended Request interface with proper Express typing
+interface AuthenticatedRequest<
+  P = any,
+  ResBody = any,
+  ReqBody = any,
+  ReqQuery = any
+> extends Request<P, ResBody, ReqBody, ReqQuery> {
+  tenantId?: string;
+  userId?: string;
+  user?: {
+    id: string;
+    tenantId: string;
+    role: string;
+  };
+  query: ReqQuery;
+  params: P;
+  body: ReqBody;
+}
 
 export class TenantController extends BaseController {
   constructor() {
@@ -81,7 +99,7 @@ export class TenantController extends BaseController {
       const sanitizedSettings = JSON.parse(JSON.stringify(validatedSettings)) as any;
 
       // Guard against stale cashBalance overwrites
-      const includeCashBalance = req.body?.__updateCashBalance === true;
+      const includeCashBalance = (req.body as any)?.__updateCashBalance === true;
       if (!includeCashBalance && 'cashBalance' in sanitizedSettings) {
         delete (sanitizedSettings as any).cashBalance;
       }
@@ -113,7 +131,7 @@ export class TenantController extends BaseController {
       }
       
       // Handle optimistic concurrency for cashBalance updates
-      const cashBalanceKnown = req.body?.__cashBalanceKnown;
+      const cashBalanceKnown = (req.body as any)?.__cashBalanceKnown;
       
       const updatedTenant = await this.wrapDatabaseOperation(async () => {
         return await TenantModel.updateTenantSettings(req.tenantId!, sanitizedSettings, cashBalanceKnown);

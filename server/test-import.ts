@@ -1,4 +1,4 @@
-import * as schema from '../shared/schema.js';
+import * as schema from './shared/schema';
 
 console.log('Keys:', Object.keys(schema).slice(0, 20));
 console.log('Has tenants?', 'tenants' in schema);

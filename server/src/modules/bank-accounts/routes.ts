@@ -4,6 +4,16 @@ import { authenticateToken, requireRole, validateTenant, attachTenantContext } f
 import { UserRole } from '../../types';
 import { asyncHandler } from "../../utils/async-handler";
 
+import { Router } from 'express';
+
+const router = Router();
+const controller = new BankAccountController();
+
+router.get('/bank-accounts', controller.getAll.bind(controller));
+router.post('/bank-accounts', controller.create.bind(controller));
+
+export default router;
+
 export class BankAccountRouter extends BaseRouter {
   private bankAccountController: BankAccountController;
 

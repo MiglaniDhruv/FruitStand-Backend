@@ -11,6 +11,42 @@ import { whatsAppService } from '../../services/whatsapp';
 import { InvoiceShareLinkModel } from '../invoice-share-links/model';
 import { TenantModel } from '../tenants/model';
 
+// Define request body types
+interface SendInvoiceBody {
+  invoiceId: string;
+}
+
+interface SendPaymentReminderBody {
+  invoiceId: string;
+  invoiceType: 'sales' | 'purchase';
+}
+
+interface SendPaymentNotificationBody {
+  paymentId: string;
+  paymentType: 'sales' | 'purchase';
+}
+
+interface MessageHistoryQuery {
+  page?: string;
+  limit?: string;
+  status?: string;
+  messageType?: string;
+  recipientType?: string;
+  search?: string;
+}
+
+interface MessagesByReferenceQuery {
+  referenceType: string;
+  referenceId: string;
+}
+
+interface PreviewMessageBody {
+  messageType: 'sales_invoice' | 'purchase_invoice' | 'payment_reminder' | 'payment_notification';
+  referenceId: string;
+  invoiceType?: 'sales' | 'purchase';
+  paymentType?: 'sales' | 'purchase';
+}
+
 export class WhatsAppController extends BaseController {
   private whatsAppMessageModel: WhatsAppMessageModel;
 
@@ -29,7 +65,7 @@ export class WhatsAppController extends BaseController {
     // Validate request body using BaseController method
     const { invoiceId } = this.validateZodSchema(z.object({
       invoiceId: z.string().uuid('Invalid invoice ID format')
-    }), req.body);
+    }), (req as any).body);
     
     // Consumes 1 WhatsApp credit. Returns 403 if insufficient credits.
     const result = await whatsAppService.sendSalesInvoice(tenantId, invoiceId);
@@ -53,7 +89,7 @@ export class WhatsAppController extends BaseController {
     // Validate request body using BaseController method
     const { invoiceId } = this.validateZodSchema(z.object({
       invoiceId: z.string().uuid('Invalid invoice ID format')
-    }), req.body);
+    }), (req as any).body);
     
     // Consumes 1 WhatsApp credit. Returns 403 if insufficient credits.
     const result = await whatsAppService.sendPurchaseInvoice(tenantId, invoiceId);
@@ -80,7 +116,7 @@ export class WhatsAppController extends BaseController {
       invoiceType: z.enum(['sales', 'purchase'], { 
         errorMap: () => ({ message: 'Invoice type must be either "sales" or "purchase"' })
       })
-    }), req.body);
+    }), (req as any).body);
     
     // Consumes 1 WhatsApp credit. Returns 403 if insufficient credits.
     const result = await whatsAppService.sendPaymentReminder(tenantId, invoiceId, invoiceType);
@@ -107,7 +143,7 @@ export class WhatsAppController extends BaseController {
       paymentType: z.enum(['sales', 'purchase'], {
         errorMap: () => ({ message: 'Payment type must be either "sales" or "purchase"' })
       })
-    }), req.body);
+    }), (req as any).body);
     
     // Consumes 1 WhatsApp credit. Returns 403 if insufficient credits.
     const result = await whatsAppService.sendPaymentNotification(tenantId, paymentId, paymentType);
@@ -129,10 +165,10 @@ export class WhatsAppController extends BaseController {
     const tenantId = req.tenantId;
     
     // Get pagination options from base controller
-    const paginationOptions = this.getPaginationOptions(req.query);
+    const paginationOptions = this.getPaginationOptions((req as any).query);
     
     // Extract optional filters from query
-    const { status, messageType, recipientType, search } = req.query;
+    const { status, messageType, recipientType, search } = (req as any).query;
     
     const filters = {
       ...(status && { status: status as string }),
@@ -161,7 +197,7 @@ export class WhatsAppController extends BaseController {
     const { referenceType, referenceId } = this.validateZodSchema(z.object({
       referenceType: z.string().min(1, 'Reference type is required'),
       referenceId: z.string().uuid('Invalid reference ID format')
-    }), req.query);
+    }), (req as any).query);
     
     // Get messages by reference
     const messages = await WhatsAppMessageModel.getMessagesByReference(
@@ -191,7 +227,7 @@ export class WhatsAppController extends BaseController {
         invoiceType: z.enum(['sales', 'purchase']).optional(),
         // For payment notifications, we need to specify payment type
         paymentType: z.enum(['sales', 'purchase']).optional()
-      }), req.body);
+      }), (req as any).body);
       
       let templateVariables: any;
       let recipientInfo: any;
@@ -254,7 +290,7 @@ export class WhatsAppController extends BaseController {
           throw new Error('Purchase invoice not found');
         }
         
-        if (!invoice.vendor) {
+        if (!(invoice as any).vendor) {
           throw new Error('Vendor information not found for invoice');
         }
         
@@ -278,18 +314,18 @@ export class WhatsAppController extends BaseController {
         }
         
         const { buildPurchaseInvoiceVariables } = await import('../../services/whatsapp/template-builder');
-        templateVariables = buildPurchaseInvoiceVariables(invoice, invoice.vendor, tenant, invoiceToken);
+        templateVariables = buildPurchaseInvoiceVariables(invoice, (invoice as any).vendor, tenant, invoiceToken);
         
         recipientInfo = {
-          name: invoice.vendor.name,
-          phone: invoice.vendor.phone,
+          name: (invoice as any).vendor.name,
+          phone: (invoice as any).vendor.phone,
           type: 'vendor'
         };
         
         referenceData = {
-          invoiceNumber: invoice.invoiceNumber,
-          invoiceDate: invoice.invoiceDate,
-          netAmount: invoice.netAmount
+          invoiceNumber: (invoice as any).invoiceNumber,
+          invoiceDate: (invoice as any).invoiceDate,
+          netAmount: (invoice as any).netAmount
         };
         
       } else if (messageType === 'payment_reminder') {
@@ -442,6 +478,7 @@ export class WhatsAppController extends BaseController {
         }
       });
   };
+
 
   /**
    * Handle Twilio WhatsApp status webhooks

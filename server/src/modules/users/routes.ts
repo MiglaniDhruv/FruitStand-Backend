@@ -18,7 +18,7 @@ export class UserRouter extends BaseRouter {
       authenticateToken, 
       asyncHandler(validateTenant),
       attachTenantContext,
-      asyncHandler(requirePermission(['view_users', 'manage_users'])), 
+      asyncHandler(requirePermission(['Admin'])), 
       asyncHandler(this.userController.getAll.bind(this.userController))
     );
 
@@ -27,7 +27,7 @@ export class UserRouter extends BaseRouter {
       authenticateToken, 
       asyncHandler(validateTenant),
       attachTenantContext,
-      asyncHandler(requirePermission(['view_users', 'manage_users'])), 
+      asyncHandler(requirePermission(['Admin'])), 
       asyncHandler(this.userController.getById.bind(this.userController))
     );
 
@@ -36,7 +36,7 @@ export class UserRouter extends BaseRouter {
       authenticateToken, 
       asyncHandler(validateTenant),
       attachTenantContext,
-      asyncHandler(requirePermission(['manage_users'])), 
+      asyncHandler(requirePermission(['Admin'])), 
       asyncHandler(this.userController.create.bind(this.userController))
     );
 
@@ -45,7 +45,7 @@ export class UserRouter extends BaseRouter {
       authenticateToken, 
       asyncHandler(validateTenant),
       attachTenantContext,
-      asyncHandler(requirePermission(['manage_users'])), 
+      asyncHandler(requirePermission(['Admin'])), 
       asyncHandler(this.userController.update.bind(this.userController))
     );
 
@@ -54,7 +54,7 @@ export class UserRouter extends BaseRouter {
       authenticateToken, 
       asyncHandler(validateTenant),
       attachTenantContext,
-      asyncHandler(requirePermission(['manage_users'])), 
+      asyncHandler(requirePermission(['Admin'])), 
       asyncHandler(this.userController.delete.bind(this.userController))
     );
 
@@ -63,7 +63,7 @@ export class UserRouter extends BaseRouter {
       authenticateToken, 
       asyncHandler(validateTenant),
       attachTenantContext,
-      asyncHandler(requirePermission(['manage_users'])), 
+      asyncHandler(requirePermission(['Admin'])), 
       asyncHandler(this.userController.updatePermissions.bind(this.userController))
     );
   }

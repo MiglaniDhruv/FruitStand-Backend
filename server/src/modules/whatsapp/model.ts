@@ -1,22 +1,22 @@
 import { eq, desc, and } from "drizzle-orm";
 import { db } from "../../../db";
-import schema from '../../../shared/schema.js';
-import type { 
-  WhatsAppMessage as WhatsAppMessageType, 
-  InsertWhatsAppMessage as InsertWhatsAppMessageType, 
-  PaginationOptions as PaginationOptionsType, 
-  PaginatedResult as PaginatedResultType 
-} from '../../../shared/schema';
-import { 
-  ensureTenantInsert, 
-  withTenant, 
-  withTenantPagination 
+import schema from "../../../shared/schema.js";
+import type {
+  WhatsAppMessage as WhatsAppMessageType,
+  InsertWhatsAppMessage as InsertWhatsAppMessageType,
+  PaginationOptions as PaginationOptionsType,
+  PaginatedResult as PaginatedResultType,
+} from "../../../shared/schema";
+import {
+  ensureTenantInsert,
+  withTenant,
+  withTenantPagination,
 } from "../../utils/tenant-scope";
-import { 
+import {
   applySorting,
   applySearchFilter,
   getCountWithSearch,
-  buildPaginationMetadata
+  buildPaginationMetadata,
 } from "../../utils/pagination";
 
 const { whatsappMessages } = schema;
@@ -31,59 +31,90 @@ export class WhatsAppMessageModel {
    * Create a new WhatsApp message record
    */
   static async createMessage(
-    tenantId: string, 
+    tenantId: string,
     messageData: InsertWhatsAppMessage
   ): Promise<WhatsAppMessage> {
+    // ✅ Add missing fields safely (cast to Partial<WhatsAppMessage>)
+    const safeData = ensureTenantInsert(
+      {
+        tenantId,
+        referenceType: messageData.referenceType ?? "generic",
+        referenceId: messageData.referenceId ?? "unknown",
+        messageType: messageData.messageType ?? "notification",
+        recipientType: messageData.recipientType ?? "customer",
+        recipientId: messageData.recipientId ?? null,
+        recipientPhone: messageData.recipientPhone ?? "",
+        templateId: messageData.templateId ?? null,
+        templateVariables: messageData.templateVariables ?? {},
+        referenceNumber: messageData.referenceNumber ?? "",
+        errorMessage: messageData.errorMessage ?? null,
+        status: (messageData as Partial<WhatsAppMessage>).status ?? "pending",
+        createdAt: (messageData as Partial<WhatsAppMessage>).createdAt ?? new Date(),
+      },
+      tenantId
+    );
+
     const [message] = await db
       .insert(whatsappMessages)
-      .values(ensureTenantInsert(messageData, tenantId))
-      .returning<WhatsAppMessage>(); // Fixed TS typing
-    
-    return message;
+      .values(safeData)
+      .returning();
+
+    return message as WhatsAppMessage;
   }
 
   /**
    * Update a WhatsApp message record
    */
   static async updateMessage(
-    tenantId: string, 
-    messageId: string, 
+    tenantId: string,
+    messageId: string,
     updates: Partial<WhatsAppMessage>
   ): Promise<WhatsAppMessage | undefined> {
     const [updatedMessage] = await db
       .update(whatsappMessages)
       .set(updates)
-      .where(withTenant(whatsappMessages, tenantId, eq(whatsappMessages.id, messageId)))
-      .returning<WhatsAppMessage>(); // Fixed TS typing
-    
-    return updatedMessage;
+      .where(
+        withTenant(
+          whatsappMessages,
+          tenantId,
+          eq(whatsappMessages.id, messageId)
+        )
+      )
+      .returning();
+    return updatedMessage as WhatsAppMessage | undefined;
   }
 
   /**
    * Get a single WhatsApp message by ID
    */
   static async getMessage(
-    tenantId: string, 
+    tenantId: string,
     messageId: string
   ): Promise<WhatsAppMessage | undefined> {
     const [message] = await db
-      .select<WhatsAppMessage>()
+      .select()
       .from(whatsappMessages)
-      .where(withTenant(whatsappMessages, tenantId, eq(whatsappMessages.id, messageId)))
+      .where(
+        withTenant(
+          whatsappMessages,
+          tenantId,
+          eq(whatsappMessages.id, messageId)
+        )
+      )
       .limit(1);
-    
-    return message;
+    return message as WhatsAppMessage | undefined;
   }
 
   /**
    * Get all WhatsApp messages for a tenant
    */
   static async getMessages(tenantId: string): Promise<WhatsAppMessage[]> {
-    return await db
-      .select<WhatsAppMessage>()
+    const messages = await db
+      .select()
       .from(whatsappMessages)
       .where(withTenant(whatsappMessages, tenantId))
       .orderBy(desc(whatsappMessages.createdAt));
+    return messages as WhatsAppMessage[];
   }
 
   /**
@@ -99,51 +130,73 @@ export class WhatsAppMessageModel {
     }
   ): Promise<PaginatedResult<WhatsAppMessage>> {
     const { page, limit, offset, tenantCondition } = withTenantPagination(
-      whatsappMessages, 
-      tenantId, 
+      whatsappMessages,
+      tenantId,
       options
     );
-    
+
     const tableColumns = {
       createdAt: whatsappMessages.createdAt,
       status: whatsappMessages.status,
       messageType: whatsappMessages.messageType,
-      recipientPhone: whatsappMessages.recipientPhone
+      recipientPhone: whatsappMessages.recipientPhone,
     };
-    
-    const searchableColumns = [whatsappMessages.recipientPhone, whatsappMessages.referenceNumber];
-    
+
+    const searchableColumns = [
+      whatsappMessages.recipientPhone,
+      whatsappMessages.referenceNumber,
+    ];
+
     let combinedCondition = tenantCondition;
-    
+
     if (options.status) {
-      combinedCondition = and(combinedCondition, eq(whatsappMessages.status, options.status))!;
+      combinedCondition = and(
+        combinedCondition,
+        eq(whatsappMessages.status, options.status)
+      )!;
     }
     if (options.messageType) {
-      combinedCondition = and(combinedCondition, eq(whatsappMessages.messageType, options.messageType))!;
+      combinedCondition = and(
+        combinedCondition,
+        eq(whatsappMessages.messageType, options.messageType)
+      )!;
     }
     if (options.recipientType) {
-      combinedCondition = and(combinedCondition, eq(whatsappMessages.recipientType, options.recipientType))!;
+      combinedCondition = and(
+        combinedCondition,
+        eq(whatsappMessages.recipientType, options.recipientType)
+      )!;
     }
-    
-    let query = db.select<WhatsAppMessage>().from(whatsappMessages).where(combinedCondition);
-    
+
+    let query = db.select().from(whatsappMessages).where(combinedCondition);
+
     if (options.search) {
-      query = applySearchFilter(query, options.search, searchableColumns, combinedCondition);
+      query = applySearchFilter(
+        query,
+        options.search,
+        searchableColumns,
+        combinedCondition
+      );
     }
-    
-    query = applySorting(query, options.sortBy || 'createdAt', options.sortOrder || 'desc', tableColumns);
-    
-    const data = await query.limit(limit).offset(offset);
-    
+
+    query = applySorting(
+      query,
+      options.sortBy || "createdAt",
+      options.sortOrder || "desc",
+      tableColumns
+    );
+
+    const data = (await query.limit(limit).offset(offset)) as WhatsAppMessage[];
+
     const total = await getCountWithSearch(
-      whatsappMessages, 
-      options.search ? searchableColumns : undefined, 
+      whatsappMessages,
+      options.search ? searchableColumns : undefined,
       options.search,
       combinedCondition
     );
-    
+
     const pagination = buildPaginationMetadata(page, limit, total);
-    
+
     return { data, pagination };
   }
 
@@ -151,12 +204,12 @@ export class WhatsAppMessageModel {
    * Get messages by reference (invoice/payment)
    */
   static async getMessagesByReference(
-    tenantId: string, 
-    referenceType: string, 
+    tenantId: string,
+    referenceType: string,
     referenceId: string
   ): Promise<WhatsAppMessage[]> {
-    return await db
-      .select<WhatsAppMessage>()
+    const messages = await db
+      .select()
       .from(whatsappMessages)
       .where(
         withTenant(
@@ -169,18 +222,20 @@ export class WhatsAppMessageModel {
         )
       )
       .orderBy(desc(whatsappMessages.createdAt));
+    return messages as WhatsAppMessage[];
   }
 
   /**
    * Get a WhatsApp message by Twilio SID (for webhook processing)
    */
-  static async getMessageByTwilioSid(twilioSid: string): Promise<WhatsAppMessage | undefined> {
+  static async getMessageByTwilioSid(
+    twilioSid: string
+  ): Promise<WhatsAppMessage | undefined> {
     const [message] = await db
-      .select<WhatsAppMessage>()
+      .select()
       .from(whatsappMessages)
       .where(eq(whatsappMessages.twilioMessageSid, twilioSid))
       .limit(1);
-    
-    return message;
+    return message as WhatsAppMessage | undefined;
   }
 }

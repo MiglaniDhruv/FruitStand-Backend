@@ -16,20 +16,27 @@ import { z } from "zod";
 const { users } = schema;
 type User = typeof schema.users.$inferSelect;
 type InsertUser = typeof schema.insertUserSchema._input;
-type PaginationOptions = typeof schema.PaginationOptions;
-export function PaginatedResult<T extends z.ZodTypeAny>(dataSchema: T) {
-  return z.object({
-    data: z.array(dataSchema),
-    pagination: z.object({
-      page: z.number(),
-      limit: z.number(),
-      total: z.number(),
-      totalPages: z.number(),
-      hasNext: z.boolean(),
-      hasPrevious: z.boolean(),
-    }),
-  });
-}
+
+type PaginationOptions = {
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  search?: string;
+};
+
+// Define PaginatedResult as a type, not a function
+type PaginatedResult<T> = {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrevious: boolean;
+  };
+};
 
 export class UserModel {
   async getUsers(tenantId: string): Promise<User[]> {
@@ -50,24 +57,24 @@ export class UserModel {
     return user || undefined;
   }
 
-  async createUser(tenantId: string, insertUser: InsertUser): Promise<User> {
+  async createUser(tenantId: string, insertUser: any): Promise<User> {
     const hashedPassword = await bcrypt.hash(insertUser.password, 10);
     const userWithTenant = ensureTenantInsert({ ...insertUser, password: hashedPassword }, tenantId);
     const [user] = await db
       .insert(users)
-      .values(userWithTenant)
+      .values(userWithTenant as any)
       .returning();
     return user;
   }
 
-  async updateUser(tenantId: string, id: string, insertUser: Partial<InsertUser>): Promise<User | undefined> {
+  async updateUser(tenantId: string, id: string, insertUser: any): Promise<User | undefined> {
     const updateData = { ...insertUser };
     if (updateData.password) {
       updateData.password = await bcrypt.hash(updateData.password, 10);
     }
     const [user] = await db
       .update(users)
-      .set(updateData)
+      .set(updateData as any)
       .where(withTenant(users, tenantId, eq(users.id, id)))
       .returning();
     return user || undefined;
@@ -76,7 +83,7 @@ export class UserModel {
   async updateUserPermissions(tenantId: string, id: string, permissions: string[]): Promise<User | undefined> {
     const [user] = await db
       .update(users)
-      .set({ permissions })
+      .set({ permissions } as any)
       .where(withTenant(users, tenantId, eq(users.id, id)))
       .returning();
     return user || undefined;

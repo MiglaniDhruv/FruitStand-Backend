@@ -868,30 +868,37 @@ export type RetailerPaymentDistributionResult = {
   retailerBalanceAfter: string;
 };
 
-export const insertCrateTransactionSchema = createInsertSchema(crateTransactions, {
-  partyType: z.enum(['retailer', 'vendor'], {
-    required_error: "Party type is required",
-    invalid_type_error: "Party type must be 'retailer' or 'vendor'"
-  }),
-  transactionType: z.enum([
-    CRATE_TRANSACTION_TYPES.GIVEN, 
-    CRATE_TRANSACTION_TYPES.RECEIVED, 
-    CRATE_TRANSACTION_TYPES.RETURNED
-  ], {
-    required_error: "Transaction type is required"
-  }),
-  transactionDate: z.union([z.string(), z.date()]).transform((val) => 
-    typeof val === 'string' ? new Date(val) : val
-  ),
-  quantity: z.union([z.string(), z.number()]).transform((val) => {
-    const num = typeof val === 'string' ? parseInt(val, 10) : val;
-    if (isNaN(num) || num <= 0) {
-      throw new Error("Quantity must be a positive integer");
-    }
-    return num;
-  }),
-  notes: z.string().nullable().optional().transform(toUpperCase),
-}).refine((data) => {
+
+export const insertCrateTransactionSchema = createInsertSchema(
+  crateTransactions,
+  {
+    partyType: z.enum(['retailer', 'vendor'], {
+      required_error: "Party type is required",
+      invalid_type_error: "Party type must be 'retailer' or 'vendor'",
+    }),
+    transactionType: z.enum([
+      CRATE_TRANSACTION_TYPES.GIVEN,
+      CRATE_TRANSACTION_TYPES.RECEIVED,
+      CRATE_TRANSACTION_TYPES.RETURNED,
+    ], {
+      required_error: "Transaction type is required",
+    }),
+    transactionDate: z.union([z.string(), z.date()]).transform((val) =>
+      typeof val === 'string' ? new Date(val) : val
+    ),
+    quantity: z.union([z.string(), z.number()]).transform((val) => {
+      const num = typeof val === 'string' ? parseInt(val, 10) : val;
+      if (isNaN(num) || num <= 0) {
+        throw new Error("Quantity must be a positive integer");
+      }
+      return num;
+    }),
+    notes: z.string().nullable().optional().transform(toUpperCase),
+    retailerId: z.string().optional(),
+    vendorId: z.string().optional(),
+  }
+).refine((data) => {
+  // validate IDs based on partyType
   if (data.partyType === 'retailer' && !data.retailerId) return false;
   if (data.partyType === 'vendor' && !data.vendorId) return false;
   if (data.partyType === 'retailer' && data.vendorId) return false;

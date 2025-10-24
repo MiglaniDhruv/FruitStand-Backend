@@ -3,14 +3,24 @@ import { z } from 'zod';
 import { BaseController } from '../../utils/base';
 import { PurchaseInvoiceModel } from './model';
 import schema from '../../../shared/schema.js';
-
-const { insertPurchaseInvoiceSchema, insertInvoiceItemSchema, insertCrateTransactionSchema, payments, INVOICE_STATUS } = schema;
-import { type AuthenticatedRequest, ForbiddenError, BadRequestError, NotFoundError } from '../../types';
+import { ForbiddenError, BadRequestError, NotFoundError } from '../../types';
 import { invoiceGenerator } from '../../services/pdf';
 import { TenantModel } from '../tenants/model';
 import { db } from '../../../db';
 import { and, eq } from 'drizzle-orm';
 
+const { 
+  insertPurchaseInvoiceSchema, 
+  insertInvoiceItemSchema, 
+  insertCrateTransactionSchema, 
+  payments, 
+  INVOICE_STATUS 
+} = schema;
+
+// Type inference for body using Zod
+type PurchaseInvoiceBody = z.infer<typeof purchaseInvoiceBodySchema>;
+
+// Define the purchase invoice body schema
 const purchaseInvoiceBodySchema = z.object({
   invoice: insertPurchaseInvoiceSchema.omit({ tenantId: true }),
   items: z.array(insertInvoiceItemSchema.omit({ invoiceId: true, tenantId: true })),
@@ -40,33 +50,18 @@ export class PurchaseInvoiceController extends BaseController {
     this.purchaseInvoiceModel = new PurchaseInvoiceModel();
   }
 
-  async getAll(req: AuthenticatedRequest, res: Response) {
+  async getAll(req: Request, res: Response) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
-    const { 
-      page, 
-      limit, 
-      search, 
-      sortBy, 
-      sortOrder,
-      status,
-      vendorId,
-      dateFrom,
-      dateTo,
-      paginated
-    } = req.query;
+    const { page, limit, search, sortBy, sortOrder, status, vendorId, dateFrom, dateTo, paginated } = req.query;
 
-    // Validate sortBy parameter
     const validSortFields = ['invoiceDate', 'invoiceNumber', 'totalAmount', 'status', 'createdAt'];
     const sortByValue = typeof sortBy === 'string' && validSortFields.includes(sortBy) ? sortBy : 'createdAt';
     const sortOrderValue = sortOrder === 'asc' ? 'asc' : 'desc';
-
-    // Check if pagination is requested using the paginated flag
     const doPaginate = paginated === 'true';
 
     if (doPaginate) {
-      // Return paginated response
       const options = {
         page: page ? parseInt(page as string, 10) : 1,
         limit: limit ? parseInt(limit as string, 10) : 10,
@@ -75,29 +70,23 @@ export class PurchaseInvoiceController extends BaseController {
         sortOrder: sortOrderValue as 'asc' | 'desc',
         status: status as 'paid' | 'unpaid' | undefined,
         vendorId: vendorId as string,
-        dateRange: {
-          from: dateFrom as string,
-          to: dateTo as string
-        }
+        dateRange: { from: dateFrom as string, to: dateTo as string }
       };
 
       const result = await this.purchaseInvoiceModel.getPurchaseInvoicesPaginated(tenantId, options);
       return this.sendPaginatedResponse(res, result.data, result.pagination);
     } else {
-      // Return non-paginated response for backward compatibility
       const invoices = await this.purchaseInvoiceModel.getPurchaseInvoices(tenantId);
       res.json(invoices);
     }
   }
 
-  async getById(req: AuthenticatedRequest, res: Response) {
+  async getById(req: Request, res: Response) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
     const { id } = req.params;
-    if (!id) {
-      throw new BadRequestError('Invoice ID is required');
-    }
+    if (!id) throw new BadRequestError('Invoice ID is required');
 
     const invoice = await this.purchaseInvoiceModel.getPurchaseInvoice(tenantId, id);
     this.ensureResourceExists(invoice, 'Invoice');
@@ -105,29 +94,25 @@ export class PurchaseInvoiceController extends BaseController {
     res.json(invoice);
   }
 
-  async create(req: AuthenticatedRequest, res: Response) {
+  async create(req: Request, res: Response) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
-    
-    const validatedData = this.validateZodSchema(purchaseInvoiceBodySchema, req.body);
 
+    const validatedData = this.validateZodSchema(purchaseInvoiceBodySchema, req.body) as PurchaseInvoiceBody;
     const { invoice: invoiceData, items: itemsData, crateTransaction, stockOutEntryIds } = validatedData;
-    
-    // Add tenantId to the data before passing to model
+
     const invoiceWithTenant = { 
       ...invoiceData, 
       tenantId,
-      // Ensure invoiceDate is properly transformed to Date
-      invoiceDate: invoiceData.invoiceDate instanceof Date ? invoiceData.invoiceDate : new Date(invoiceData.invoiceDate)
+      invoiceDate: new Date(invoiceData.invoiceDate)
     };
     const itemsWithTenant = itemsData.map(item => ({ ...item, tenantId }));
     const crateTransactionWithTenant = crateTransaction ? { 
       ...crateTransaction, 
       tenantId,
-      // Ensure transactionDate is properly transformed to Date
-      transactionDate: crateTransaction.transactionDate instanceof Date ? crateTransaction.transactionDate : new Date(crateTransaction.transactionDate)
+      transactionDate: new Date(crateTransaction.transactionDate)
     } : undefined;
-    
+
     const invoice = await this.wrapDatabaseOperation(() =>
       this.purchaseInvoiceModel.createPurchaseInvoice(
         tenantId, 
@@ -137,37 +122,33 @@ export class PurchaseInvoiceController extends BaseController {
         stockOutEntryIds
       )
     );
-    
+
     res.status(201).json(invoice);
   }
 
-  async update(req: AuthenticatedRequest, res: Response) {
+  async update(req: Request, res: Response) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
     const { id } = req.params;
     if (!id) throw new BadRequestError('Purchase invoice ID is required');
     this.validateUUID(id, 'Purchase invoice ID');
-    
-    const validatedData = this.validateZodSchema(purchaseInvoiceBodySchema, req.body);
 
+    const validatedData = this.validateZodSchema(purchaseInvoiceBodySchema, req.body) as PurchaseInvoiceBody;
     const { invoice: invoiceData, items: itemsData, crateTransaction, stockOutEntryIds } = validatedData;
-    
-    // Add tenantId to the data before passing to model
+
     const invoiceWithTenant = { 
       ...invoiceData, 
       tenantId,
-      // Ensure invoiceDate is properly transformed to Date
-      invoiceDate: invoiceData.invoiceDate instanceof Date ? invoiceData.invoiceDate : new Date(invoiceData.invoiceDate)
+      invoiceDate: new Date(invoiceData.invoiceDate)
     };
     const itemsWithTenant = itemsData.map(item => ({ ...item, tenantId }));
     const crateTransactionWithTenant = crateTransaction ? { 
       ...crateTransaction, 
       tenantId,
-      // Ensure transactionDate is properly transformed to Date
-      transactionDate: crateTransaction.transactionDate instanceof Date ? crateTransaction.transactionDate : new Date(crateTransaction.transactionDate)
+      transactionDate: new Date(crateTransaction.transactionDate)
     } : undefined;
-    
+
     const invoice = await this.wrapDatabaseOperation(() =>
       this.purchaseInvoiceModel.updatePurchaseInvoice(
         tenantId, 
@@ -178,18 +159,18 @@ export class PurchaseInvoiceController extends BaseController {
         stockOutEntryIds
       )
     );
-    
+
     res.status(200).json(invoice);
   }
 
-  async createShareLink(req: AuthenticatedRequest, res: Response) {
+  async createShareLink(req: Request, res: Response) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
     const { id: invoiceId } = this.validateZodSchema(shareInvoiceParamsSchema, req.params);
-    
+
     const shareLink = await this.purchaseInvoiceModel.createShareLink(tenantId, invoiceId);
-    
+
     res.status(201).json({
       success: true,
       data: {
@@ -199,52 +180,33 @@ export class PurchaseInvoiceController extends BaseController {
     });
   }
 
-  async delete(req: AuthenticatedRequest, res: Response) {
+  async delete(req: Request, res: Response) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
     
     const { id } = req.params;
-    if (!id) {
-      throw new BadRequestError('Invoice ID is required');
-    }
-
-    // Validate UUID format
+    if (!id) throw new BadRequestError('Invoice ID is required');
     this.validateUUID(id, 'Purchase invoice ID');
 
-    // Fetch invoice to validate existence and status
     const invoice = await this.wrapDatabaseOperation(() =>
       this.purchaseInvoiceModel.getPurchaseInvoice(tenantId, id)
     );
-    
-    if (!invoice) {
-      throw new NotFoundError('Purchase invoice not found');
-    }
+    if (!invoice) throw new NotFoundError('Purchase invoice');
 
     if (invoice.status !== INVOICE_STATUS.UNPAID) {
-      throw new BadRequestError('Cannot delete a paid or partially paid invoice. Only unpaid invoices can be deleted.');
+      throw new BadRequestError('Only unpaid invoices can be deleted.');
     }
 
     const success = await this.wrapDatabaseOperation(() =>
       this.purchaseInvoiceModel.deletePurchaseInvoice(tenantId, id)
     );
-    
-    if (!success) {
-      // Race condition: re-fetch to determine if invoice was deleted or status changed
-      const invoiceCheck = await this.wrapDatabaseOperation(() =>
-        this.purchaseInvoiceModel.getPurchaseInvoice(tenantId, id)
-      );
-      
-      if (invoiceCheck && invoiceCheck.status !== INVOICE_STATUS.UNPAID) {
-        throw new BadRequestError('Cannot delete a paid or partially paid invoice. Only unpaid invoices can be deleted.');
-      }
-      
-      throw new NotFoundError('Invoice not found');
-    }
+
+    if (!success) throw new NotFoundError('Invoice not found');
 
     res.status(204).send();
   }
 
-  async downloadPDF(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  async downloadPDF(req: Request, res: Response, next: NextFunction) {
     if (!req.tenantId) throw new ForbiddenError('No tenant context found');
     const tenantId = req.tenantId;
 
@@ -262,7 +224,6 @@ export class PurchaseInvoiceController extends BaseController {
     );
 
     const invoiceWithPayments = { ...invoice!, payments: paymentsData };
-
     const tenant = await TenantModel.getTenant(tenantId);
     if (!tenant) throw new NotFoundError('Tenant');
 

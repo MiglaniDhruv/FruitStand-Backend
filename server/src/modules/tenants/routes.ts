@@ -44,7 +44,7 @@ export class TenantRouter extends BaseRouter {
       authenticateToken,
       asyncHandler(validateTenant),
       attachTenantContext,
-      asyncHandler(requirePermission(['manage_settings'])),
+      asyncHandler(requirePermission(['Admin'])),
       asyncHandler(this.tenantController.updateSettings.bind(this.tenantController))
     );
   }

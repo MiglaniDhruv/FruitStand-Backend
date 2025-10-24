@@ -7,8 +7,12 @@ const { crateTransactions, retailers, vendors, CRATE_TRANSACTION_TYPES } = schem
 
 type CrateTransaction = typeof schema.crateTransactions.$inferSelect;
 type InsertCrateTransaction = typeof schema.insertCrateTransactionSchema._input;
-type CrateTransactionWithParty = typeof schema.CrateTransactionWithParty;
+type CrateTransactionWithParty = CrateTransaction & {
+  retailer: typeof schema.retailers.$inferSelect | null;
+  vendor: typeof schema.vendors.$inferSelect | null;
+};
 type PaginationOptions = typeof schema.PaginationOptions;
+
 export function PaginatedResult<T extends z.ZodTypeAny>(dataSchema: T) {
   return z.object({
     data: z.array(dataSchema),
@@ -22,6 +26,10 @@ export function PaginatedResult<T extends z.ZodTypeAny>(dataSchema: T) {
     }),
   });
 }
+
+// ✅ Create a type alias for TypeScript usage
+type PaginatedResultType<T extends z.ZodTypeAny> = z.infer<ReturnType<typeof PaginatedResult<T>>>;
+
 import { normalizePaginationOptions, buildPaginationMetadata } from '../../utils/pagination';
 import { withTenant, ensureTenantInsert } from '../../utils/tenant-scope';
 
@@ -54,28 +62,25 @@ export class CrateModel {
     const vendorMap = new Map(vendorsData.map(v => [v.id, v]));
     
     // Assemble final data with party relationships
-    const result = transactions.map(transaction => {
-      const retailer = transaction.retailerId ? retailerMap.get(transaction.retailerId) : null;
-      const vendor = transaction.vendorId ? vendorMap.get(transaction.vendorId) : null;
-      return {
-        ...transaction,
-        retailer: retailer || null,
-        vendor: vendor || null
-      };
-    }) as CrateTransactionWithParty[];
-
-    return result;
+    return transactions.map(transaction => ({
+      ...transaction,
+      retailer: transaction.retailerId ? retailerMap.get(transaction.retailerId) || null : null,
+      vendor: transaction.vendorId ? vendorMap.get(transaction.vendorId) || null : null
+    })) as CrateTransactionWithParty[];
   }
 
-  async getCrateTransactionsPaginated(tenantId: string, options?: PaginationOptions & {
-    search?: string;
-    type?: 'given' | 'received' | 'returned';
-    partyType?: 'retailer' | 'vendor';
-    retailerId?: string;
-    vendorId?: string;
-    dateFrom?: string;
-    dateTo?: string;
-  }): Promise<PaginatedResult<CrateTransactionWithParty>> {
+  async getCrateTransactionsPaginated(
+    tenantId: string,
+    options?: PaginationOptions & {
+      search?: string;
+      type?: 'given' | 'received' | 'returned';
+      partyType?: 'retailer' | 'vendor';
+      retailerId?: string;
+      vendorId?: string;
+      dateFrom?: string;
+      dateTo?: string;
+    }
+  ): Promise<PaginatedResultType<z.ZodTypeAny>> { // ✅ fixed type
     const { page, limit, offset } = normalizePaginationOptions(options || {});
     
     // Build WHERE conditions array with tenant filtering
@@ -95,85 +100,45 @@ export class CrateModel {
       whereConditions.push(eq(crateTransactions.transactionType, transactionType));
     }
     
-    // Apply retailer filter
-    if (options?.retailerId) {
-      whereConditions.push(eq(crateTransactions.retailerId, options.retailerId));
-    }
+    if (options?.retailerId) whereConditions.push(eq(crateTransactions.retailerId, options.retailerId));
+    if (options?.vendorId) whereConditions.push(eq(crateTransactions.vendorId, options.vendorId));
+    if (options?.dateFrom) whereConditions.push(gte(crateTransactions.transactionDate, new Date(options.dateFrom)));
+    if (options?.dateTo) whereConditions.push(lte(crateTransactions.transactionDate, new Date(options.dateTo)));
     
-    // Apply vendor filter
-    if (options?.vendorId) {
-      whereConditions.push(eq(crateTransactions.vendorId, options.vendorId));
-    }
-    
-    // Apply date range filter
-    if (options?.dateFrom) {
-      whereConditions.push(gte(crateTransactions.transactionDate, new Date(options.dateFrom)));
-    }
-    if (options?.dateTo) {
-      whereConditions.push(lte(crateTransactions.transactionDate, new Date(options.dateTo)));
-    }
-    
-    // Handle search by getting matching retailer/vendor IDs or transaction fields
     if (options?.search) {
-      // Get retailer IDs that match search with tenant filtering
       const matchingRetailers = await db.select({ id: retailers.id })
         .from(retailers)
         .where(withTenant(retailers, tenantId, ilike(retailers.name, `%${options.search}%`)));
       const retailerIds = matchingRetailers.map(r => r.id);
       
-      // Get vendor IDs that match search with tenant filtering
       const matchingVendors = await db.select({ id: vendors.id })
         .from(vendors)
         .where(withTenant(vendors, tenantId, ilike(vendors.name, `%${options.search}%`)));
       const vendorIds = matchingVendors.map(v => v.id);
       
-      // Build search conditions
-      const searchConditions = [];
+      const searchConditions = [
+        ilike(crateTransactions.transactionType, `%${options.search}%`),
+        ilike(crateTransactions.notes, `%${options.search}%`),
+      ];
       
-      // Search in transaction type
-      searchConditions.push(ilike(crateTransactions.transactionType, `%${options.search}%`));
+      if (retailerIds.length > 0) searchConditions.push(inArray(crateTransactions.retailerId, retailerIds));
+      if (vendorIds.length > 0) searchConditions.push(inArray(crateTransactions.vendorId, vendorIds));
       
-      // Search in notes
-      searchConditions.push(ilike(crateTransactions.notes, `%${options.search}%`));
-      
-      // Search in matching retailer IDs
-      if (retailerIds.length > 0) {
-        searchConditions.push(inArray(crateTransactions.retailerId, retailerIds));
-      }
-      
-      // Search in matching vendor IDs
-      if (vendorIds.length > 0) {
-        searchConditions.push(inArray(crateTransactions.vendorId, vendorIds));
-      }
-      
-      if (searchConditions.length > 0) {
-        whereConditions.push(or(...searchConditions)!);
-      }
+      whereConditions.push(or(...searchConditions)!);
     }
     
-    // Combine all conditions
     const finalWhereCondition = whereConditions.length > 0 ? and(...whereConditions) : undefined;
     
-    // Apply sorting
     const sortBy = options?.sortBy || 'createdAt';
     const sortOrder = options?.sortOrder || 'desc';
     
-    // Build sorting order
     let orderByClause;
-    if (sortBy === 'transactionDate') {
-      orderByClause = sortOrder === 'asc' ? asc(crateTransactions.transactionDate) : desc(crateTransactions.transactionDate);
-    } else if (sortBy === 'transactionType') {
-      orderByClause = sortOrder === 'asc' ? asc(crateTransactions.transactionType) : desc(crateTransactions.transactionType);
-    } else if (sortBy === 'quantity') {
-      orderByClause = sortOrder === 'asc' ? asc(crateTransactions.quantity) : desc(crateTransactions.quantity);
-    } else if (sortBy === 'partyName') {
-      // Sort by retailer name or vendor name based on party type
-      orderByClause = sortOrder === 'asc' ? asc(retailers.name) : desc(retailers.name);
-    } else { // default to createdAt
-      orderByClause = sortOrder === 'asc' ? asc(crateTransactions.createdAt) : desc(crateTransactions.createdAt);
-    }
+    if (sortBy === 'transactionDate') orderByClause = sortOrder === 'asc' ? asc(crateTransactions.transactionDate) : desc(crateTransactions.transactionDate);
+    else if (sortBy === 'transactionType') orderByClause = sortOrder === 'asc' ? asc(crateTransactions.transactionType) : desc(crateTransactions.transactionType);
+    else if (sortBy === 'quantity') orderByClause = sortOrder === 'asc' ? asc(crateTransactions.quantity) : desc(crateTransactions.quantity);
+    else if (sortBy === 'partyName') orderByClause = sortOrder === 'asc' ? asc(retailers.name) : desc(retailers.name);
+    else orderByClause = sortOrder === 'asc' ? asc(crateTransactions.createdAt) : desc(crateTransactions.createdAt);
     
-    // Build and execute paginated query with dual JOINs for both retailers and vendors
     const transactionsData = await db.select({
         transaction: crateTransactions,
         retailer: retailers,
@@ -187,14 +152,12 @@ export class CrateModel {
       .limit(limit)
       .offset(offset);
     
-    // Assemble final data with party relationships
     const data = transactionsData.map(({ transaction, retailer, vendor }) => ({
       ...transaction,
       retailer: retailer || null,
       vendor: vendor || null
     })) as CrateTransactionWithParty[];
     
-    // Get total count with same conditions
     const [{ count: total }] = await db.select({ count: count() })
       .from(crateTransactions)
       .leftJoin(retailers, eq(crateTransactions.retailerId, retailers.id))
@@ -205,6 +168,7 @@ export class CrateModel {
     
     return { data, pagination };
   }
+
 
   async getCrateTransactionsByRetailer(tenantId: string, retailerId: string): Promise<CrateTransactionWithParty[]> {
     const transactions = await db.select().from(crateTransactions)

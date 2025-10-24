@@ -12,20 +12,101 @@ const {
 } = schema;
 import { withTenant } from '../../utils/tenant-scope';
 import { TenantModel } from '../tenants/model';
-import schema from '../../../shared/schema.js';
 
-type TurnoverReportData = typeof schema.TurnoverReportData;
-type ProfitLossReportData = typeof schema.ProfitLossReportData;
-type CommissionReportData = typeof schema.CommissionReportData;
-type CommissionReportEntry = typeof schema.CommissionReportEntry;
-type ShortfallReportEntry = typeof schema.ShortfallReportEntry;
-type ShortfallReportData = typeof schema.ShortfallReportData;
-type ExpensesSummaryEntry = typeof schema.ExpensesSummaryEntry;
-type ExpensesSummaryData = typeof schema.ExpensesSummaryData;
-type VendorListEntry = typeof schema.VendorListEntry;
-type VendorsListData = typeof schema.VendorsListData;
-type RetailerListEntry = typeof schema.RetailerListEntry;
-type RetailersListData = typeof schema.RetailersListData;
+type TurnoverReportData = {
+  entries: Array<{
+    date: string;
+    salesAmount: string;
+    purchaseAmount: string;
+    netTurnover: string;
+  }>;
+  totalSales: string;
+  totalPurchases: string;
+  netTurnover: string;
+  fromDate?: string;
+  toDate?: string;
+};
+
+type ProfitLossReportData = {
+  revenue: string;
+  costs: string;
+  grossProfit: string;
+  expenses: string;
+  netProfit: string;
+  fromDate?: string;
+  toDate?: string;
+};
+
+type CommissionReportEntry = {
+  invoiceNumber: string;
+  invoiceDate: string;
+  vendorName: string;
+  retailerName: string;
+  totalAmount: string;
+  commissionRate: string;
+  commissionAmount: string;
+};
+
+type CommissionReportData = {
+  entries: CommissionReportEntry[];
+  totalCommission: string;
+  fromDate?: string;
+  toDate?: string;
+};
+
+type ShortfallReportEntry = {
+  retailerId: string;
+  retailerName: string;
+  shortfallBalance: string;
+  lastTransactionDate: string;
+};
+
+type ShortfallReportData = {
+  entries: ShortfallReportEntry[];
+  totalShortfall: string;
+  fromDate?: string;
+  toDate?: string;
+};
+
+type ExpensesSummaryEntry = {
+  category: string;
+  amount: string;
+  count: number;
+  percentage: string;
+};
+
+type ExpensesSummaryData = {
+  entries: ExpensesSummaryEntry[];
+  totalExpenses: string;
+  fromDate?: string;
+  toDate?: string;
+};
+
+type VendorListEntry = {
+  vendorId: string;
+  vendorName: string;
+  phone: string;
+  address: string;
+  balance: string;
+};
+
+type VendorsListData = {
+  entries: VendorListEntry[];
+  totalPayable: string;
+};
+
+type RetailerListEntry = {
+  retailerId: string;
+  retailerName: string;
+  phone: string;
+  address: string;
+  udhaaarBalance: string;
+};
+
+type RetailersListData = {
+  entries: RetailerListEntry[];
+  totalReceivable: string;
+};
 
 export class ReportModel {
   async getTurnoverReport(tenantId: string, fromDate?: string, toDate?: string): Promise<TurnoverReportData> {
