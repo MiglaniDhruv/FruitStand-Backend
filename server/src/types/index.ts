@@ -11,10 +11,11 @@ export type Tenant = typeof schema.tenants.$inferSelect;
 // Authentication related types
 export interface AuthUser {
   id: string;
-  username: string;
-  role: UserRole;
-  name: string;
-  permissions: string[];
+  tenantId: string;
+  role: UserRole | string;
+  username?: string;
+  name?: string;
+  permissions?: string[];
 }
 
 // Role enum
@@ -37,9 +38,6 @@ export interface BankAccount1 {
 }
 
 // Authenticated request with generics for Express
-
-
-
 
 export interface AuthenticatedRequest<
   P = any,

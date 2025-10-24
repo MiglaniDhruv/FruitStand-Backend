@@ -136,7 +136,9 @@ export const requireRole = (roles: UserRole[]) => async (
   res: Response,
   next: NextFunction
 ) => {
-  if (!req.user || !roles.includes(req.user.role)) {
+  const userRole = req.user?.role as UserRole;
+  
+  if (!req.user || !userRole || !roles.includes(userRole)) {
     throw new ForbiddenError('Insufficient permissions');
   }
   next();
