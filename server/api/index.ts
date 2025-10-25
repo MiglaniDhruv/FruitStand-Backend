@@ -1,40 +1,40 @@
 import express, { type Request, Response, NextFunction } from "express";
 import "dotenv/config";
-import { closeDatabase } from "../server/db";
-import { extractTenantSlug } from "../server/src/middleware/tenant-slug";
-import { SYSTEM_ROUTES } from "../server/src/constants/routes";
-import { ERROR_CODES } from "../server/src/constants/error-codes";
-import { logError } from "../server/src/utils/error-logger";
-import { AppError, ValidationError, InternalServerError } from "../server/src/types/index";
-import { handleDatabaseError } from "../server/src/utils/database-errors";
+import { closeDatabase } from "../db";
+import { extractTenantSlug } from "../src/middleware/tenant-slug";
+import { SYSTEM_ROUTES } from "../src/constants/routes";
+import { ERROR_CODES } from "../src/constants/error-codes";
+import { logError } from "../src/utils/error-logger";
+import { AppError, ValidationError, InternalServerError } from "../src/types/index";
+import { handleDatabaseError } from "../src/utils/database-errors";
 import { ZodError } from 'zod';
-import { asyncHandler } from "../server/src/utils/async-handler";
-import { attachRequestId } from '../server/src/middleware/request-id';
-import { requestTimeout } from '../server/src/middleware/timeout';
-import { sanitizeInputs, sanitizeParam } from '../server/src/middleware/sanitization';
-import { databaseHealthMiddleware, databaseErrorHandler } from '../server/src/middleware/database-health';
-import { startDatabaseHealthMonitoring, getDatabaseHealthEndpoint } from '../server/src/utils/database-health';
+import { asyncHandler } from "../src/utils/async-handler";
+import { attachRequestId } from '../src/middleware/request-id';
+import { requestTimeout } from '../src/middleware/timeout';
+import { sanitizeInputs, sanitizeParam } from '../src/middleware/sanitization';
+import { databaseHealthMiddleware, databaseErrorHandler } from '../src/middleware/database-health';
+import { startDatabaseHealthMonitoring, getDatabaseHealthEndpoint } from '../src/utils/database-health';
 
 // Import all modular routers
-import { authRouter } from "../server/src/modules/auth";
-import { bankAccountRouter } from "../server/src/modules/bank-accounts";
-import { userRouter } from "../server/src/modules/users";
-import { vendorRouter } from "../server/src/modules/vendors";
-import { itemRouter } from "../server/src/modules/items";
-import { stockRouter } from "../server/src/modules/stock";
-import { purchaseInvoiceRouter } from "../server/src/modules/purchase-invoices";
-import { paymentRouter } from "../server/src/modules/payments";
-import { retailerRouter } from "../server/src/modules/retailers";
-import { salesInvoiceRouter } from "../server/src/modules/sales-invoices";
-import { salesPaymentRouter } from "../server/src/modules/sales-payments";
-import { crateRouter } from "../server/src/modules/crates";
-import { expenseRouter } from "../server/src/modules/expenses";
-import { ledgerRouter } from "../server/src/modules/ledgers";
-import { dashboardRouter } from "../server/src/modules/dashboard";
-import { tenantRouter } from "../server/src/modules/tenants";
-import { whatsappRouter } from "../server/src/modules/whatsapp";
-import { publicRouter } from "../server/src/modules/public/router";
-import { reportRouter } from "../server/src/modules/reports";
+import { authRouter } from "../src/modules/auth";
+import { bankAccountRouter } from "../src/modules/bank-accounts";
+import { userRouter } from "../src/modules/users";
+import { vendorRouter } from "../src/modules/vendors";
+import { itemRouter } from "../src/modules/items";
+import { stockRouter } from "../src/modules/stock";
+import { purchaseInvoiceRouter } from "../src/modules/purchase-invoices";
+import { paymentRouter } from "../src/modules/payments";
+import { retailerRouter } from "../src/modules/retailers";
+import { salesInvoiceRouter } from "../src/modules/sales-invoices";
+import { salesPaymentRouter } from "../src/modules/sales-payments";
+import { crateRouter } from "../src/modules/crates";
+import { expenseRouter } from "../src/modules/expenses";
+import { ledgerRouter } from "../src/modules/ledgers";
+import { dashboardRouter } from "../src/modules/dashboard";
+import { tenantRouter } from "../src/modules/tenants";
+import { whatsappRouter } from "../src/modules/whatsapp";
+import { publicRouter } from "../src/modules/public/router";
+import { reportRouter } from "../src/modules/reports";
 import cors from 'cors';
 import session from 'express-session';
 
@@ -42,7 +42,7 @@ import session from 'express-session';
 
 // api/index.ts
 import serverless from "serverless-http";
-import app from "../server/src/app";
+import app from "../src/app";
 
 export default serverless(app);
 
@@ -262,7 +262,7 @@ app.use(asyncHandler(extractTenantSlug));
 (async () => {
   // Initialize database with default data
   try {
-    const { initializeDatabase } = await import("../server/initializeDatabase");
+    const { initializeDatabase } = await import("../initializeDatabase");
     await initializeDatabase();
   } catch (error) {
     // Critical failure - database initialization must succeed for server to function
@@ -273,7 +273,7 @@ app.use(asyncHandler(extractTenantSlug));
 
   // Initialize WhatsApp payment reminder scheduler
   try {
-    const { initializePaymentReminderScheduler } = await import("../server/src/services/whatsapp");
+    const { initializePaymentReminderScheduler } = await import("../src/services/whatsapp");
     await initializePaymentReminderScheduler();
     console.log("WhatsApp payment reminder scheduler initialized");
   } catch (error) {
