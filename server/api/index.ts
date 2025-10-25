@@ -1,43 +1,42 @@
 import express, { type Request, Response, NextFunction } from "express";
 import "dotenv/config";
-import { closeDatabase } from "./db";
-import { extractTenantSlug } from "./src/middleware/tenant-slug";
-import { SYSTEM_ROUTES } from "./src/constants/routes";
-import { ERROR_CODES } from "./src/constants/error-codes";
-import { logError } from "./src/utils/error-logger";
-import { AppError, ValidationError, InternalServerError } from "./src/types/index";
-import { handleDatabaseError } from "./src/utils/database-errors";
+import { closeDatabase } from "../db";
+import { extractTenantSlug } from "../src/middleware/tenant-slug";
+import { SYSTEM_ROUTES } from "../src/constants/routes";
+import { ERROR_CODES } from "../src/constants/error-codes";
+import { logError } from "../src/utils/error-logger";
+import { AppError, ValidationError, InternalServerError } from "../src/types/index";
+import { handleDatabaseError } from "../src/utils/database-errors";
 import { ZodError } from 'zod';
-import { asyncHandler } from "./src/utils/async-handler";
-import { attachRequestId } from './src/middleware/request-id';
-import { requestTimeout } from './src/middleware/timeout';
-import { sanitizeInputs, sanitizeParam } from './src/middleware/sanitization';
-import { databaseHealthMiddleware, databaseErrorHandler } from './src/middleware/database-health';
-import { startDatabaseHealthMonitoring, getDatabaseHealthEndpoint } from './src/utils/database-health';
+import { asyncHandler } from "../src/utils/async-handler";
+import { attachRequestId } from '../src/middleware/request-id';
+import { requestTimeout } from '../src/middleware/timeout';
+import { sanitizeInputs, sanitizeParam } from '../src/middleware/sanitization';
+import { databaseHealthMiddleware, databaseErrorHandler } from '../src/middleware/database-health';
+import { startDatabaseHealthMonitoring, getDatabaseHealthEndpoint } from '../src/utils/database-health';
 
 // Import all modular routers
-import { authRouter } from "./src/modules/auth";
-import { bankAccountRouter } from "./src/modules/bank-accounts";
-import { userRouter } from "./src/modules/users";
-import { vendorRouter } from "./src/modules/vendors";
-import { itemRouter } from "./src/modules/items";
-import { stockRouter } from "./src/modules/stock";
-import { purchaseInvoiceRouter } from "./src/modules/purchase-invoices";
-import { paymentRouter } from "./src/modules/payments";
-import { retailerRouter } from "./src/modules/retailers";
-import { salesInvoiceRouter } from "./src/modules/sales-invoices";
-import { salesPaymentRouter } from "./src/modules/sales-payments";
-import { crateRouter } from "./src/modules/crates";
-import { expenseRouter } from "./src/modules/expenses";
-import { ledgerRouter } from "./src/modules/ledgers";
-import { dashboardRouter } from "./src/modules/dashboard";
-import { tenantRouter } from "./src/modules/tenants";
-import { whatsappRouter } from "./src/modules/whatsapp";
-import { publicRouter } from "./src/modules/public/router";
-import { reportRouter } from "./src/modules/reports";
+import { authRouter } from "../src/modules/auth";
+import { bankAccountRouter } from "../src/modules/bank-accounts";
+import { userRouter } from "../src/modules/users";
+import { vendorRouter } from "../src/modules/vendors";
+import { itemRouter } from "../src/modules/items";
+import { stockRouter } from "../src/modules/stock";
+import { purchaseInvoiceRouter } from "../src/modules/purchase-invoices";
+import { paymentRouter } from "../src/modules/payments";
+import { retailerRouter } from "../src/modules/retailers";
+import { salesInvoiceRouter } from "../src/modules/sales-invoices";
+import { salesPaymentRouter } from "../src/modules/sales-payments";
+import { crateRouter } from "../src/modules/crates";
+import { expenseRouter } from "../src/modules/expenses";
+import { ledgerRouter } from "../src/modules/ledgers";
+import { dashboardRouter } from "../src/modules/dashboard";
+import { tenantRouter } from "../src/modules/tenants";
+import { whatsappRouter } from "../src/modules/whatsapp";
+import { publicRouter } from "../src/modules/public/router";
+import { reportRouter } from "../src/modules/reports";
 import cors from 'cors';
 import session from 'express-session';
-
 
 // Simple logging function
 const log = (message: string) => {
@@ -148,6 +147,7 @@ app.use(session({
   },
 }));
 
+export default app;
 
 app.use(cors({
   origin: [
@@ -255,7 +255,7 @@ app.use(asyncHandler(extractTenantSlug));
 (async () => {
   // Initialize database with default data
   try {
-    const { initializeDatabase } = await import("./initializeDatabase");
+    const { initializeDatabase } = await import("../initializeDatabase");
     await initializeDatabase();
   } catch (error) {
     // Critical failure - database initialization must succeed for server to function
@@ -266,7 +266,7 @@ app.use(asyncHandler(extractTenantSlug));
 
   // Initialize WhatsApp payment reminder scheduler
   try {
-    const { initializePaymentReminderScheduler } = await import("./src/services/whatsapp");
+    const { initializePaymentReminderScheduler } = await import("../src/services/whatsapp");
     await initializePaymentReminderScheduler();
     console.log("WhatsApp payment reminder scheduler initialized");
   } catch (error) {
@@ -427,22 +427,12 @@ app.use(asyncHandler(extractTenantSlug));
     return res.status(500).json(response);
   });
 
-  // Setup HTTP server
-  const { createServer } = await import("http");
-  server = createServer(app);
-
-  // Start server
-  const port = parseInt(process.env.PORT || '5000', 10);
-  const host = process.platform === "win32" ? "127.0.0.1" : "0.0.0.0";
-
-  server.listen({
-    port,
-    host,
-  }, () => {
-    log(`Backend API server running on http://${host}:${port}`);
-    log(`Health check available at http://${host}:${port}/api/health`);
-
-    // Start database health monitoring after server is up
-    startDatabaseHealthMonitoring(30000); // Check every 30 seconds
+  if (process.env.NODE_ENV !== "production") {
+  const port = process.env.PORT || 5000;
+  app.listen(port, () => {
+    console.log(`Local server running on http://localhost:${port}`);
   });
+}
+
+
 })();
