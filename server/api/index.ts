@@ -38,6 +38,15 @@ import { reportRouter } from "../src/modules/reports";
 import cors from 'cors';
 import session from 'express-session';
 
+
+
+// api/index.ts
+import serverless from "serverless-http";
+import app from "../src/app";
+
+export default serverless(app);
+
+
 // Simple logging function
 const log = (message: string) => {
   console.log(`[${new Date().toISOString()}] ${message}`);
@@ -135,7 +144,6 @@ process.on('SIGINT', () => {
   initiateShutdown(0);
 });
 
-const app = express();
 app.use(session({
   secret: process.env.SESSION_SECRET || 'your-secret-key',
   resave: false,
@@ -147,7 +155,6 @@ app.use(session({
   },
 }));
 
-export default app;
 
 app.use(cors({
   origin: [
