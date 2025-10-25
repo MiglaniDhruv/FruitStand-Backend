@@ -1,3 +1,4 @@
+// server/src/app.ts
 import express from "express";
 
 // Import all module routers (named exports from each routes.ts)
@@ -20,9 +21,15 @@ import { router as tenantsRoutes } from "./modules/tenants/routes";
 import { router as vendorRoutes } from "./modules/vendors/routes";
 
 const app = express();
-app.use(express.json());
 
-// Mount all routes
+// Middleware
+app.use(express.json()); // Parse JSON bodies
+app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
+
+// Health check route (optional, for Vercel testing)
+app.get("/health", (req, res) => res.json({ status: "ok" }));
+
+// Mount all module routes
 app.use("/users", userRoutes);
 app.use("/payments", paymentRoutes);
 app.use("/auth", authRoutes);
@@ -40,5 +47,8 @@ app.use("/sales-payments", salespaymentRoutes);
 app.use("/stock", stockRoutes);
 app.use("/tenants", tenantsRoutes);
 app.use("/vendors", vendorRoutes);
+
+// Catch-all route for undefined endpoints
+app.use("*", (req, res) => res.status(404).json({ error: "Route not found" }));
 
 export default app;
