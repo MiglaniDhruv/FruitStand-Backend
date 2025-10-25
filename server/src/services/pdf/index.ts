@@ -25,3 +25,4 @@ export {
 
 // Default export is the service instance
 export { invoiceGenerator as default } from './invoice-generator';
+
