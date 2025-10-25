@@ -95,3 +95,13 @@ export class BankAccountRouter extends BaseRouter {
     );
   }
 }
+
+// server/src/modules/users/routes.ts
+
+// Example route
+router.get("/", (req, res) => {
+  res.json({ message: "List of users" });
+});
+
+// Named export
+export { router };

@@ -68,3 +68,15 @@ export class UserRouter extends BaseRouter {
     );
   }
 }
+
+// server/src/modules/users/routes.ts
+import { Router } from "express";
+const router = Router();
+
+// Example route
+router.get("/", (req, res) => {
+  res.json({ message: "List of users" });
+});
+
+// Named export
+export { router };

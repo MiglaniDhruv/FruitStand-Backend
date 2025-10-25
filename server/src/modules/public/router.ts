@@ -29,3 +29,14 @@ export class PublicRouter {
 }
 
 export const publicRouter = new PublicRouter().getRouter();
+
+// server/src/modules/users/routes.ts
+const router = Router();
+
+// Example route
+router.get("/", (req, res) => {
+  res.json({ message: "List of users" });
+});
+
+// Named export
+export { router };
