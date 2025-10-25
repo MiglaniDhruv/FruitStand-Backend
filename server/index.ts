@@ -149,15 +149,13 @@ app.use(session({
 }));
 
 
-
 app.use(cors({
   origin: [
-    'http://localhost:5173',  
-    'https://fruit-stand-frontend.vercel.app/'  
+    'http://localhost:5173',
+    'https://fruit-stand-frontend.vercel.app'
   ],
   credentials: true,
 }));
-
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -165,6 +163,7 @@ app.use(express.urlencoded({ extended: false }));
 app.get("/", (req, res) => {
   res.redirect("https://fruit-stand-frontend.vercel.app/pune-fresh/login");
 });
+
 
 app.use(attachRequestId);
 
