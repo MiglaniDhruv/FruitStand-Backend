@@ -1,6 +1,6 @@
 import { eq, desc, asc, and, or, gte, lte, ilike, inArray, count, sql } from 'drizzle-orm';
 import { db } from '../../../db';
-import schema from '../../../../shared/schema.js';
+import schema from '../../../shared/schema.js';
 
 const { crateTransactions, retailers, vendors, CRATE_TRANSACTION_TYPES } = schema;
 

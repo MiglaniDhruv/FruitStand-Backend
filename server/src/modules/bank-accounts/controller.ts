@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { BaseController } from '../../utils/base';
 import { BankAccountModel } from './model';
 import { type AuthenticatedRequest, ForbiddenError, BadRequestError, NotFoundError } from '../../types';
-import schema from '../../../../shared/schema.js';
+import schema from '../../../shared/schema.js';
 
 const { insertBankAccountSchema, updateBankAccountSchema, insertBankDepositSchema, insertBankWithdrawalSchema } = schema;
 export class BankAccountController extends BaseController {

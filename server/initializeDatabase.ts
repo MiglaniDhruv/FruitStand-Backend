@@ -1,12 +1,12 @@
 import { db } from "./db";
 import bcrypt from "bcrypt";
-import schema from '../shared/schema.js';
+import schema from './shared/schema';
 
 const { 
   tenants,
   users
 } = schema;
-import { ROLE_PERMISSIONS } from "../shared/permissions";
+import { ROLE_PERMISSIONS } from "./shared/permissions";
 import { ensureTenantInsert } from "./src/utils/tenant-scope";
 import { seedTenantData } from "./seedTenantData";
 

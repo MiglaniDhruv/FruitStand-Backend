@@ -3,7 +3,7 @@ import { z } from "zod";
 import { BaseController } from "../../utils/base";
 import { ItemModel } from "./model";
 import { AuthenticatedRequest, ForbiddenError, BadRequestError, NotFoundError, ValidationError } from "../../types";
-import schema from '../../../../shared/schema.js';
+import schema from '../../../shared/schema.js';
 
 const { insertItemSchema } = schema;
 

@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import { TenantModel } from "./model";
-import schema from '../../../../shared/schema.js';
+import schema from '../../../shared/schema.js';
 
 const { insertTenantSchema, tenantSettingsSchema } = schema;
 import { BaseController } from "../../utils/base";

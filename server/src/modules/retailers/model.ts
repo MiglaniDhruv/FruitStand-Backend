@@ -1,6 +1,6 @@
 import { eq, desc, asc, and, or, ilike, count, inArray, sum } from 'drizzle-orm';
 import { db } from '../../../db';
-import schema from '../../../../shared/schema.js';
+import schema from '../../../shared/schema.js';
 
 const { 
   retailers, 

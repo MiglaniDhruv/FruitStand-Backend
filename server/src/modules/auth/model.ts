@@ -1,7 +1,7 @@
 import bcrypt from 'bcrypt';
 import { UserModel } from '../users/model';
 import { TenantModel } from '../tenants/model';
-import type { User } from '../../../../shared/schema.js';
+import type { User } from '../../../shared/schema.js';
 
 export interface AuthenticationResult {
   success: boolean;

@@ -1,5 +1,5 @@
 import { eq, asc, and, or, gt, count } from "drizzle-orm";
-import schema from '../../../../shared/schema.js';
+import schema from '../../../shared/schema.js';
 
 const { 
   items,

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { BaseController } from "../../utils/base";
 import { UserModel } from "./model";
 import { AuthenticatedRequest, Permission, ForbiddenError, BadRequestError, NotFoundError } from "../../types";
-import schema from '../../../../shared/schema.js';
+import schema from '../../../shared/schema.js';
 const { insertUserSchema } = schema;
 
 export class UserController extends BaseController {

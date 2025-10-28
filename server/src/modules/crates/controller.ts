@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import schema from '../../../../shared/schema.js';
+import schema from '../../../shared/schema.js';
 
 const { insertCrateTransactionSchema } = schema;
 import { BaseController } from '../../utils/base';

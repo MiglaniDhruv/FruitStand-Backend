@@ -1,6 +1,5 @@
 import { sum, gte, lte, and, sql, eq, desc, count, asc } from 'drizzle-orm';
 import { db } from '../../../db';
-import schema from '../../../../shared/schema.js';
 
 const { 
   salesInvoices, 
@@ -12,7 +11,7 @@ const {
 } = schema;
 import { withTenant } from '../../utils/tenant-scope';
 import { TenantModel } from '../tenants/model';
-import schema from '../../../../shared/schema.js';
+import schema from '../../../shared/schema';
 
 type TurnoverReportData = typeof schema.TurnoverReportData;
 type ProfitLossReportData = typeof schema.ProfitLossReportData;

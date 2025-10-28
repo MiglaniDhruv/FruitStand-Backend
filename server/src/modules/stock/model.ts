@@ -1,5 +1,5 @@
 import { eq, desc, asc, and, or, count, ilike, lte, inArray, isNull, ne } from "drizzle-orm";
-import schema from '../../../../shared/schema.js';
+import schema from '../../../shared/schema.js';
 
 const { 
   stock,

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { BaseController } from '../../utils/base';
 import { ReportModel } from './model';
 import { type AuthenticatedRequest, ForbiddenError, BadRequestError, NotFoundError } from '../../types';
-import schema from '../../../../shared/schema.js';
+import schema from '../../../shared/schema.js';
 
 const { reportDateRangeSchema } = schema;
 import { TenantModel } from '../tenants/model';

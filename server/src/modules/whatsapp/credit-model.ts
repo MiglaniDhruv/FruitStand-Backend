@@ -1,5 +1,5 @@
 import { db } from '../../../db';
-import schema from '../../../../shared/schema.js';
+import schema from '../../../shared/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { withTenant, ensureTenantInsert } from '../../utils/tenant-scope';
 

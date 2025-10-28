@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import schema from '../../../../shared/schema.js';
+import schema from '../../../shared/schema.js';
 
 const { insertSalesPaymentSchema } = schema;
 import { BaseController } from '../../utils/base';

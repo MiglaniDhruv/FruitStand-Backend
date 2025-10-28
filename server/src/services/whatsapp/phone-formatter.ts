@@ -1,4 +1,4 @@
-import schema from '../../../../shared/schema.js';
+import schema from '../../../shared/schema.js';
 
 const { phoneNumberSchema } = schema;
 

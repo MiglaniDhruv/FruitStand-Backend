@@ -1,6 +1,6 @@
 import { db } from './db';
 import { sql } from 'drizzle-orm';
-import schema from '../shared/schema.js';
+import schema from './shared/schema';
 
 const { 
   tenants, 
@@ -24,9 +24,7 @@ const {
   bankbook
 } = schema;
 
-import Permissions from '../shared/permissions';
-
-const { ROLE_PERMISSIONS } = Permissions;
+import { ROLE_PERMISSIONS } from "./shared/permissions";
 import { ensureTenantInsert, withTenant } from './src/utils/tenant-scope';
 import { LedgerModel } from './src/modules/ledgers/model';
 import bcrypt from 'bcrypt';

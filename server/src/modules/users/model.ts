@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import { eq, asc } from "drizzle-orm";
 import { db } from "../../../db";
-import schema from '../../../../shared/schema.js';
+import schema from '../../../shared/schema.js';
 import { 
   applySorting,
   applySearchFilter,

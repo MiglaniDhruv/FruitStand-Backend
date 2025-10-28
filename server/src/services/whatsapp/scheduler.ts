@@ -4,7 +4,7 @@ import { eq, and, lt, or, inArray, gt } from 'drizzle-orm';
 import { whatsAppService } from './whatsapp-service.js';
 import { TenantModel } from '../../modules/tenants/model.js';
 import { withTenant } from '../../utils/tenant-scope.js';
-import schema from '../../../../shared/schema.js';
+import schema from '../../../shared/schema.js';
 
 const { salesInvoices, purchaseInvoices, tenants } = schema;
 

@@ -1,6 +1,6 @@
 import { eq, desc, inArray, and, or, gt, asc, sum, sql } from 'drizzle-orm';
 import { db } from '../../../db';
-import schema from '../../../../shared/schema.js';
+import schema from '../../../shared/schema.js';
 
 const { payments, purchaseInvoices, vendors, bankAccounts, cashbook, bankbook } = schema;
 

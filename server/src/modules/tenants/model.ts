@@ -1,6 +1,6 @@
 import { eq, like, or, sql, and } from "drizzle-orm";
 import { db } from "../../../db";
-import schema from '../../../../shared/schema.js';
+import schema from '../../../shared/schema';
 import { WhatsAppCreditModel } from '../whatsapp/credit-model.js';
 import { LedgerModel } from '../ledgers/model';
 import { 

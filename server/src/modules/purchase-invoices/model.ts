@@ -6,7 +6,7 @@ import { assertSameTenant } from '../../utils/tenant';
 import { InvoiceShareLinkModel } from '../invoice-share-links/model';
 import { NotFoundError, ValidationError, BadRequestError, ConflictError, AppError } from '../../types';
 import { handleDatabaseError } from '../../utils/database-errors';
-import schema from '../../../../shared/schema.js';
+import schema from '../../../shared/schema.js';
 
 const { 
   purchaseInvoices, 

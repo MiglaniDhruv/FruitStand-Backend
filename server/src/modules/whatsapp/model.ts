@@ -1,6 +1,6 @@
 import { eq, desc, and, or, ilike } from "drizzle-orm";
 import { db } from "../../../db";
-import schema from '../../../../shared/schema.js';
+import schema from '../../../shared/schema.js';
 import { 
   ensureTenantInsert, 
   withTenant, 

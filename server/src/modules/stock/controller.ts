@@ -3,7 +3,7 @@ import { z } from "zod";
 import { BaseController } from "../../utils/base";
 import { StockModel } from "./model";
 import { AuthenticatedRequest, ForbiddenError, BadRequestError } from "../../types";
-import schema from '../../../../shared/schema.js';
+import schema from '../../../shared/schema.js';
 
 const { insertStockSchema, insertStockMovementSchema } = schema;
 

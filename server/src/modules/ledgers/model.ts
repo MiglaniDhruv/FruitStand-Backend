@@ -3,7 +3,7 @@ import { db } from '../../../db';
 import { TenantModel } from '../tenants/model';
 import { BankAccountModel } from '../bank-accounts/model';
 import { getStartOfDay, getEndOfDay, isValidDateString } from './dateUtils';
-import schema from '../../../../shared/schema.js';
+import schema from '../../../shared/schema.js';
 import { withTenant, ensureTenantInsert } from '../../utils/tenant-scope';
 
 // Destructure tables from schema

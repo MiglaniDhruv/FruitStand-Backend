@@ -4,7 +4,7 @@ import { AuthModel } from './model';
 import { TenantModel } from '../tenants/model';
 import { signToken, signRefreshToken, verifyRefreshToken, type AuthTokenPayload, type RefreshTokenPayload } from '../../middleware/auth';
 import { type AuthenticatedRequest, UserRole, ValidationError, NotFoundError, UnauthorizedError, ForbiddenError, BadRequestError, InternalServerError } from '../../types';
-import schema from '../../../../shared/schema.js';
+import schema from '../../../shared/schema.js';
 
 const { loginSchema, refreshTokenSchema } = schema;
 

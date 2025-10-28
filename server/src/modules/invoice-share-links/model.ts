@@ -1,7 +1,7 @@
 import { eq, and, sql } from 'drizzle-orm';
 import { db } from '../../../db.js';
 import crypto from 'crypto';
-import schema from '../../../../shared/schema.js';
+import schema from '../../../shared/schema.js';
 import { withTenant, ensureTenantInsert } from '../../utils/tenant-scope.js';
 
 const {

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { BaseController } from '../../utils/base';
 import { PaymentModel } from './model';
-import schema from '../../../../shared/schema.js';
+import schema from '../../../shared/schema.js';
 
 const { insertPaymentSchema } = schema;
 import { type AuthenticatedRequest, ForbiddenError, BadRequestError, NotFoundError } from '../../types';

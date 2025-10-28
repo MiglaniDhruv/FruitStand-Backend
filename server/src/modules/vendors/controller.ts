@@ -4,7 +4,7 @@ import { BaseController } from "../../utils/base";
 import { VendorModel } from "./model";
 import { PaymentModel } from "../payments/model";
 import { AuthenticatedRequest, NotFoundError, ValidationError, BadRequestError, ForbiddenError } from "../../types";
-import schema from '../../../../shared/schema.js';
+import schema from '../../../shared/schema.js';
 
 const { insertVendorSchema, insertVendorPaymentSchema } = schema;
 import { whatsAppService } from "../../services/whatsapp";

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import schema from '../../../../shared/schema.js';
+import schema from '../../../shared/schema.js';
 
 const { insertSalesInvoiceSchema, insertSalesInvoiceItemSchema, insertCrateTransactionSchema, INVOICE_STATUS } = schema;
 import { BaseController } from '../../utils/base';

@@ -1,6 +1,6 @@
 import { eq, asc, and, count, sum, sql, desc, isNull } from 'drizzle-orm';
 import { db } from '../../../db';
-import schema from '../../../../shared/schema.js';
+import schema from '../../../shared/schema.js';
 import { TenantModel } from '../tenants/model';
 import { withTenant, ensureTenantInsert } from '../../utils/tenant-scope';
 import { applySorting, applySearchFilter, getCountWithSearch, buildPaginationMetadata, withTenantPagination } from '../../utils/pagination';

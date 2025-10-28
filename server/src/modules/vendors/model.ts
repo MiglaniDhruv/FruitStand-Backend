@@ -1,5 +1,5 @@
 import { eq, asc, and, inArray, count, sum } from "drizzle-orm";
-import schema from '../../../../shared/schema.js';
+import schema from '../../../shared/schema.js';
 import { db } from "../../../db";
 import {
   normalizePaginationOptions,
